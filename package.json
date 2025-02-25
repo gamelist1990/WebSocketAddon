@@ -1,0 +1,26 @@
+{
+  "name": "websocketaddon",
+  "version": "0.1.0",
+  "description": "Minecraft Bedrock Addon",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamelist1990/WebSocketAddon.git"
+  },
+  "keywords": [
+    "WebSocketAddon"
+  ],
+  "author": "Koukunn_",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gamelist1990/WebSocketAddon/issues"
+  },
+  "homepage": "https://github.com/gamelist1990/WebSocketAddon#readme",
+  "dependencies": {
+    "@minecraft/server": "^1.18.0-beta.1.21.61-stable",
+    "@minecraft/server-ui": "^1.4.0-beta.1.21.61-stable"
+  }
+}
