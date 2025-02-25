@@ -1,6 +1,7 @@
 import { Module, moduleManager } from '../../module/module';
 import { Handler } from '../../module/Handler';
 import { registerAllCommands } from './command';
+import "utils/import";
 
 class ScoreModule implements Module {
     name = 'ScoreModule';
