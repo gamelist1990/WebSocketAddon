@@ -2,10 +2,6 @@
   "name": "websocketaddon",
   "version": "0.1.0",
   "description": "Minecraft Bedrock Addon",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gamelist1990/WebSocketAddon.git"
