@@ -10,6 +10,7 @@ interface ItemData {
     lockMode?: ItemLockMode;
     keepOnDeath?: boolean;
     enchantments?: { type: string; level?: number }[];
+    probability?: number; // 確率 (0-100)
 }
 
 interface ChestFillData {
@@ -21,8 +22,8 @@ interface ChestFillData {
 export function registerChestFillCommand(handler: Handler, moduleName: string) {
     handler.registerCommand('chestFill', {
         moduleName: moduleName,
-        description: '指定された座標のコンテナブロックに、指定されたアイテムを格納します。',
-        usage: 'chestFill <JSON>\n  <JSON>: {"locations":[{"x":0,"y":64,"z":0},...],"items":[{"id":"minecraft:diamond",...},...],"randomSlot":true}',
+        description: '指定された座標のコンテナブロックに、指定されたアイテムを確率で格納します。',
+        usage: 'chestFill <JSON>\n  <JSON>: {"locations":[{"x":0,"y":64,"z":0},...],"items":[{"id":"minecraft:diamond",...,"probability":50},...],"randomSlot":true}',
         execute: (_message, event) => {
             const consoleOutput = (msg: string) => console.warn(msg);
 
@@ -44,7 +45,6 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
 
                 const chestFillDataStr = matchResult[0];
                 const chestFillData: ChestFillData = JSON.parse(chestFillDataStr);
-
 
                 if (!chestFillData.locations || !chestFillData.items) {
                     sendMessage('JSONは "locations" と "items" 配列を含む必要があります。');
@@ -88,8 +88,11 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                         continue;
                     }
 
-
                     for (const itemData of chestFillData.items) {
+                        // 確率判定
+                        if (itemData.probability !== undefined && Math.random() * 100 > itemData.probability) {
+                            continue; // 確率を満たさない場合はスキップ
+                        }
                         try {
                             const itemStack = new ItemStack(itemData.id, itemData.amount ?? 1);
 
@@ -100,12 +103,11 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                                 itemStack.setLore(itemData.lore);
                             }
                             if (itemData.lockMode) {
-                                itemStack.lockMode = itemData.lockMode
+                                itemStack.lockMode = itemData.lockMode;
                             }
                             if (itemData.keepOnDeath) {
-                                itemStack.keepOnDeath = itemData.keepOnDeath
+                                itemStack.keepOnDeath = itemData.keepOnDeath;
                             }
-
 
                             if (itemData.enchantments) {
                                 const enchantable = itemStack.getComponent('enchantable');
@@ -116,20 +118,18 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                                             if (!enchantmentType) {
                                                 throw new Error(`Invalid enchantment type: ${enchantData.type}`);
                                             }
-
                                             enchantable.addEnchantment({ type: enchantmentType, level: enchantData.level ?? 1 });
                                         } catch (enchError) {
                                             consoleOutput(`エンチャント追加エラー: ${enchError}`);
                                         }
                                     }
                                 }
-
                             }
 
 
                             if (randomSlot) {
                                 let slot = Math.floor(Math.random() * container.size);
-                                let maxAttempts = container.size; 
+                                let maxAttempts = container.size;
                                 let attempts = 0;
                                 while (container.getItem(slot) && attempts < maxAttempts) {
                                     slot = Math.floor(Math.random() * container.size);
@@ -140,7 +140,6 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                                 } else {
                                     consoleOutput(`座標 ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z} のコンテナに空きスロットが見つかりませんでした。`);
                                 }
-
                             } else {
                                 let added = false;
                                 for (let i = 0; i < container.size; i++) {
@@ -153,11 +152,10 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                                 if (!added) {
                                     consoleOutput(`座標 ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z} のコンテナに空きスロットが見つかりませんでした。`);
                                 }
-
                             }
                         } catch (itemError) {
                             consoleOutput(`アイテム処理エラー: ${itemError}`);
-                            sendMessage(`アイテム処理エラー: ${itemError}`); 
+                            sendMessage(`アイテム処理エラー: ${itemError}`);
                         }
                     }
                 }

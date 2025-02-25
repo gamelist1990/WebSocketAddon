@@ -2,7 +2,7 @@
 import { world } from "@minecraft/server";
 import { getServerUptime } from "./timeUtils";
 import { formatTimestampJST } from "./timeUtils";
-import { ver } from "..";
+import { ver } from "../main";
 
 const simpleReplacements: { [key: string]: string | (() => string) } = {
     '[allPlayer]': () => world.getPlayers().length.toString(),

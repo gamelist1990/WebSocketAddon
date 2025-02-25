@@ -1,12 +1,23 @@
 import { Module, moduleManager } from '../../module/module';
 import { Handler } from '../../module/Handler';
-import { registerAllCommands } from './command';
-import "utils/import";
+import "./utils/import";
+import { registerChangeTagCommand } from './command/changeTag';
+import { registerChestFillCommand } from './command/chestFill';
+import { registerCloneBlockCommand } from './command/cloneBlock';
+import { registerCloseFormCommand } from './command/closeForm';
+import { registerScoreCommand } from './command/copyScore';
+import { registerRandomDropCommand } from './command/dropItem';
+import { registerRandomBlockCommand } from './command/randomBlock';
+import { registerNumberCommand } from './command/randomNumber';
+import { registerResetScoreCommand } from './command/resetScore';
+import { registerScoreDeleteCommand } from './command/scoreDelete';
+import { registerTeamCommand } from './command/team';
+import { registerTeamCountCommand } from './command/teamCount';
 
 class ScoreModule implements Module {
-    name = 'ScoreModule';
-    enabledByDefault = true;
-    docs = `§lコマンド一覧§r\n
+  name = 'ScoreModule';
+  enabledByDefault = true;
+  docs = `§lコマンド一覧§r\n
 §b- resetScore <スコアボード名|-all>§r: 指定したスコアボード、または全てのスコアボードのスコアをリセットします。\n
   §7<スコアボード名>§r: リセットするスコアボードの名前。\n
   §7-all§r: 全てのスコアボードをリセット。\n
@@ -79,9 +90,21 @@ class ScoreModule implements Module {
 
 
 
-    registerCommands(handler: Handler): void {
-        registerAllCommands(handler, this.name);
-    }
+  async registerCommands(handler: Handler): Promise<void> {
+    registerResetScoreCommand(handler, this.name);
+    registerNumberCommand(handler, this.name);
+    registerScoreCommand(handler, this.name);
+    registerTeamCommand(handler, this.name);
+    registerScoreDeleteCommand(handler, this.name);
+    registerTeamCountCommand(handler, this.name);
+    registerCloseFormCommand(handler, this.name);
+    registerChangeTagCommand(handler, this.name);
+    registerCloneBlockCommand(handler, this.name);
+    registerChestFillCommand(handler, this.name);
+    registerRandomBlockCommand(handler, this.name);
+    registerRandomDropCommand(handler, this.name);
+  }
+  
 }
 export const ver = "0.1.0"
 const ScoreModules = new ScoreModule();

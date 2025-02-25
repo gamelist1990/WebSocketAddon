@@ -1,7 +1,7 @@
 
 
 import { system, world, } from '@minecraft/server';
-import { ver } from './plugins/ScoreModule';
+import { ver } from './plugins/ScoreModule/main';
 
 
 const startTime = Date.now();

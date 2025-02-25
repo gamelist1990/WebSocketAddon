@@ -4,10 +4,12 @@ import "./BreakEvent/index";
 import "./chatEvent/index";
 import "./itemEvent/index";
 import "./JoinEvent/index";
+import "./ViewEvent/index";
+
 
 // ===== モジュール (Module) =====
 import "./module/index";
-import "./ScoreModule/index";
+import "./ScoreModule/main";
 
 // ===== スコアボード関連 (Scoreboard) =====
 import "./scoreboard/index";

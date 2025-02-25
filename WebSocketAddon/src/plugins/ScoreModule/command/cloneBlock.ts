@@ -1,4 +1,4 @@
-import { Player, system, world, Vector3 } from "@minecraft/server";
+import { Player, system, world } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
 export function registerCloneBlockCommand(handler: Handler, moduleName: string) {
@@ -74,24 +74,24 @@ export function registerCloneBlockCommand(handler: Handler, moduleName: string) 
                         return;
                     }
 
-                    const fromLocation: Vector3 = (from.x, from.y, from.z);
-                    const toLocation: Vector3 = (to.x, to.y, to.z);
-
+                    // /clone コマンド用の文字列を作成
+                    const cloneCommand = `clone ${from.x} ${from.y} ${from.z} ${from.x} ${from.y} ${from.z} ${to.x} ${to.y} ${to.z} replace`;
                     try {
-                        const fromBlock = dimension.getBlock(fromLocation);
-                        if (!fromBlock) {
-                            consoleOutput(
-                                `From座標 (${fromLocation.x}, ${fromLocation.y}, ${fromLocation.z}) にブロックが見つかりませんでした。`,
-                            );
-                            continue;
-                        }
-                        const fromPermutation = fromBlock.permutation;
-                        dimension.getBlock(toLocation)?.setPermutation(fromPermutation);
+                        dimension.runCommandAsync(cloneCommand)
+                            .then(result => {
+                                if (result.successCount === 0) {
+                                }
+                            })
+                            .catch(error => {
+                                consoleOutput(`クローンコマンド実行中に例外: ${error}`);
+                                sendMessage(`クローンコマンド実行中に例外: ${error}`);
+                            });
                     } catch (error) {
-                        consoleOutput(`クローン中にエラーが発生しました: ${error}`);
-                        sendMessage(`クローン中にエラーが発生しました: ${error}`);
-                        return;
+                        consoleOutput(`クローンコマンド実行中にエラー（同期）: ${error}`);
+                        sendMessage(`クローンコマンド実行中にエラー（同期）: ${error}`);
                     }
+
+
                 }
             } catch (error) {
                 consoleOutput(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);
