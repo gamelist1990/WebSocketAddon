@@ -6,6 +6,8 @@ import {
     ItemStack,
     Vector3,
     EnchantmentTypes,
+    Entity,
+    Block,
 } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
@@ -22,19 +24,20 @@ interface ItemDropData {
 }
 
 interface RandomDropData {
-    start: { x: number; y: number; z: number };
-    end: { x: number; y: number; z: number };
+    //start end をオプションに指定が無い場合は、実行者の位置にするように修正
+    start?: { x: number; y: number; z: number };
+    end?: { x: number; y: number; z: number };
     items: ItemDropData[];
-    dropCount?: number; 
+    dropCount?: number;
 }
 
 export function registerRandomDropCommand(handler: Handler, moduleName: string) {
     handler.registerCommand("randomDrop", {
         moduleName: moduleName,
         description:
-            "指定された範囲内のランダムな位置に、指定されたアイテムをドロップします。",
+            "指定された範囲内、または実行者の位置に、指定されたアイテムをランダムにドロップします。",
         usage:
-            'randomDrop <JSON>\n  <JSON>: {"start":{"x":0,"y":64,"z":0},"end":{"x":10,"y":70,"z":10},"items":[{"id":"minecraft:diamond","weight":1,"amount":2,"name":"§bSpecial Diamond","lore":["§7Shiny!"]}],"dropCount": 5}',
+            'randomDrop <JSON>\n  <JSON>: {"start":{"x":0,"y":64,"z":0},"end":{"x":10,"y":70,"z":10},"items":[{"id":"minecraft:diamond","weight":1,"amount":2,"name":"§bSpecial Diamond","lore":["§7Shiny!"]}],"dropCount": 5}  または  {"items":[{"id":"minecraft:diamond","weight":1}],"dropCount":1}',
         execute: (_message, event) => {
             const consoleOutput = (msg: string) => console.warn(msg);
 
@@ -57,38 +60,25 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
                 const randomDropDataStr = matchResult[0];
                 const randomDropData: RandomDropData = JSON.parse(randomDropDataStr);
 
-                if (
-                    !randomDropData.start ||
-                    !randomDropData.end ||
-                    !randomDropData.items
-                ) {
-                    sendMessage(
-                        'JSONは "start", "end", "items" を含む必要があります。',
-                    );
-                    return;
-                }
-                if (!Array.isArray(randomDropData.items)) {
-                    sendMessage('"items" は配列である必要があります。');
-                    return;
-                }
-
-                if (randomDropData.items.length === 0) {
-                    sendMessage('"items" は空にできません。');
+                if (!randomDropData.items || !Array.isArray(randomDropData.items) || randomDropData.items.length === 0) {
+                    sendMessage('"items" は配列で、空にできません。');
                     return;
                 }
 
 
-                const dimension =
-                    event.sourceEntity?.dimension ?? world.getDimension("overworld");
+                const dimension = event.sourceEntity?.dimension ?? world.getDimension("overworld");
                 const dropCount = randomDropData.dropCount ?? 1;
+                const sourceLocation = getSourceLocation(event.sourceEntity, event.sourceBlock);
+                if (sourceLocation.x == 0, sourceLocation.y == 0, sourceLocation.z == 0) {
+                    console.warn("[DropCommand]座標が取得できませんでした。");
+                    return;
+                }
 
-                // 重みの合計を計算
                 let totalWeight = 0;
                 for (const itemData of randomDropData.items) {
                     totalWeight += itemData.weight;
                 }
 
-                // ランダムなアイテムを選択する関数
                 const getRandomItem = (): ItemDropData | null => {
                     let random = Math.random() * totalWeight;
                     for (const itemData of randomDropData.items) {
@@ -97,10 +87,14 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
                             return itemData;
                         }
                     }
-                    return null; 
+                    return null;
                 };
 
                 const getRandomLocation = (): Vector3 => {
+                    if (!randomDropData.start || !randomDropData.end) {
+                        return sourceLocation;
+                    }
+
                     const minX = Math.min(randomDropData.start.x, randomDropData.end.x);
                     const maxX = Math.max(randomDropData.start.x, randomDropData.end.x);
                     const minY = Math.min(randomDropData.start.y, randomDropData.end.y);
@@ -113,16 +107,18 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
                         y: Math.floor(Math.random() * (maxY - minY + 1)) + minY,
                         z: Math.floor(Math.random() * (maxZ - minZ + 1)) + minZ,
                     };
+
                 };
 
-                // アイテムをドロップする処理
+
                 for (let i = 0; i < dropCount; i++) {
                     const randomItemData = getRandomItem();
                     if (!randomItemData) {
-                        continue; 
+                        continue;
                     }
                     const randomLocation = getRandomLocation();
-                    system.run(() => { 
+
+                    system.run(() => {
                         try {
                             const itemStack = new ItemStack(
                                 randomItemData.id,
@@ -135,12 +131,11 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
                                 itemStack.setLore(randomItemData.lore);
                             }
                             if (randomItemData.lockMode) {
-                                itemStack.lockMode = randomItemData.lockMode
+                                itemStack.lockMode = randomItemData.lockMode;
                             }
                             if (randomItemData.keepOnDeath) {
-                                itemStack.keepOnDeath = randomItemData.keepOnDeath
+                                itemStack.keepOnDeath = randomItemData.keepOnDeath;
                             }
-
 
                             if (randomItemData.enchantments) {
                                 const enchantable = itemStack.getComponent("enchantable");
@@ -161,7 +156,6 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
                                     }
                                 }
                             }
-
                             dimension.spawnItem(itemStack, randomLocation);
 
 
@@ -179,4 +173,18 @@ export function registerRandomDropCommand(handler: Handler, moduleName: string) 
             }
         },
     });
+
+
+    function getSourceLocation(entity: Entity | undefined, Block: Block | undefined): Vector3 {
+        if (entity) {
+            return entity.location;
+        } else {
+            if (Block) {
+                const spawnPos = Block.location;
+                return { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
+            } else {
+                return { x: 0, y: 0, z: 0 };
+            }
+        }
+    }
 }

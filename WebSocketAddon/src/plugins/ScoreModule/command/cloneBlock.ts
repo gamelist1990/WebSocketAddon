@@ -74,7 +74,7 @@ export function registerCloneBlockCommand(handler: Handler, moduleName: string) 
                         return;
                     }
 
-                    // /clone コマンド用の文字列を作成
+                    // /clone コマンド()
                     const cloneCommand = `clone ${from.x} ${from.y} ${from.z} ${from.x} ${from.y} ${from.z} ${to.x} ${to.y} ${to.z} replace`;
                     try {
                         dimension.runCommandAsync(cloneCommand)

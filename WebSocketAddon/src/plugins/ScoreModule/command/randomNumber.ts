@@ -11,7 +11,6 @@ export function registerNumberCommand(handler: Handler, moduleName: string) {
                 console.warn(message);
             };
 
-            // コマンドブロックからの実行かどうかで処理を分岐
             const sendMessage = (message: string) => {
                 if (event.sourceEntity instanceof Player) {
                     const player = event.sourceEntity;
@@ -21,7 +20,7 @@ export function registerNumberCommand(handler: Handler, moduleName: string) {
                 }
             };
 
-            const args = message.split(/\s*,\s*/); // カンマ区切りで分割
+            const args = message.split(/\s*,\s*/);
             const numbers: number[] = [];
 
             for (const arg of args) {
@@ -40,16 +39,16 @@ export function registerNumberCommand(handler: Handler, moduleName: string) {
 
             const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
 
-            let objective = world.scoreboard.getObjective('ws_number'); // スコアボード名
+            let objective = world.scoreboard.getObjective('ws_number'); 
             if (!objective) {
                 objective = world.scoreboard.addObjective('ws_number', 'ランダム数値');
             }
 
-            objective.setScore('number', randomNumber); // "number" という参加者にスコアを設定
+            objective.setScore('number', randomNumber); 
 
-            // コマンドブロックからの実行の場合はコンソールに結果を出力
             if (!(event.sourceEntity instanceof Player)) {
                 consoleOutput(`設定された数値: ${randomNumber}`);
+                //debug
             }
         },
     });

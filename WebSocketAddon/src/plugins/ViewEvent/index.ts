@@ -38,7 +38,6 @@ class ViewEvent implements Module {
     }
 
     private unregisterEventListeners(): void {
-        // No specific event unsubscription needed, as we're using system.runInterval
     }
 
 

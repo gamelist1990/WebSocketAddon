@@ -8,14 +8,15 @@ interface BlockData {
 
 interface RandomBlockData {
     locations: string[];
+    replaceBlock?: string[];
     blocks: BlockData[];
 }
 
 export function registerRandomBlockCommand(handler: Handler, moduleName: string) {
     handler.registerCommand('randomBlock', {
         moduleName: moduleName,
-        description: '指定された座標に、指定されたブロックをランダムに設置します。',
-        usage: 'randomBlock <JSON>\n  <JSON>: {"locations":["0 64 0", "1 64 0", ...],"blocks":[{"id":"minecraft:dirt","weight":1},{"id":"minecraft:stone","weight":2},...]}',
+        description: '指定された座標のブロック、または指定された種類のブロックを、指定されたブロックでランダムに置き換えます。',
+        usage: 'randomBlock <JSON>\n  <JSON>: {"locations":["0 64 0", "1 64 0", ...],"blocks":[{"id":"minecraft:dirt","weight":1},{"id":"minecraft:stone","weight":2},...]} or {"locations": [...], "replaceBlock": ["minecraft:dirt", "minecraft:stone"], "blocks":[{"id":"minecraft:diamond_block","weight":1},{"id":"minecraft:gold_block","weight":2},...]}',
         execute: (_message, event) => {
             const consoleOutput = (msg: string) => console.warn(msg);
 
@@ -38,12 +39,24 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                 const randomBlockDataStr = matchResult[0];
                 const randomBlockData: RandomBlockData = JSON.parse(randomBlockDataStr);
 
-                if (!randomBlockData.locations || !randomBlockData.blocks) {
-                    sendMessage('JSONは "locations" と "blocks" 配列を含む必要があります。');
+                if (!randomBlockData.blocks) {
+                    sendMessage('JSONは "blocks" 配列を含む必要があります。');
                     return;
                 }
-                if (!Array.isArray(randomBlockData.locations) || !Array.isArray(randomBlockData.blocks)) {
-                    sendMessage('"locations" と "blocks" は配列である必要があります。');
+
+                if (!Array.isArray(randomBlockData.blocks)) {
+                    sendMessage('"blocks" は配列である必要があります。');
+                    return;
+                }
+
+
+                if (!randomBlockData.locations) {
+                    sendMessage('JSONは "locations" を含む必要があります。');
+                    return;
+                }
+
+                if (!Array.isArray(randomBlockData.locations)) {
+                    sendMessage('"locations"は配列である必要があります。');
                     return;
                 }
                 if (randomBlockData.locations.length === 0) {
@@ -51,15 +64,20 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                     return;
                 }
 
+
+                if (randomBlockData.replaceBlock && !Array.isArray(randomBlockData.replaceBlock)) {
+                    sendMessage('"replaceBlock"は配列である必要があります。');
+                    return;
+                }
+
+
                 const dimension = event.sourceEntity?.dimension ?? world.getDimension('overworld');
 
-                // 重みの合計を計算
                 let totalWeight = 0;
                 for (const blockData of randomBlockData.blocks) {
                     totalWeight += blockData.weight;
                 }
 
-                // ランダムなブロックを選択する関数
                 const getRandomBlock = () => {
                     let random = Math.random() * totalWeight;
                     for (const blockData of randomBlockData.blocks) {
@@ -68,7 +86,7 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                             return blockData.id;
                         }
                     }
-                    return randomBlockData.blocks[0].id; // フォールバック (通常は到達しない)
+                    return randomBlockData.blocks[0].id; //到達したら お　わ　り
                 };
 
 
@@ -81,14 +99,24 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
 
                     const blockLoc: Vector3 = { x: coords[0], y: coords[1], z: coords[2] };
 
-                    // system.run 内でブロックを設置 (遅延実行)
                     system.run(() => {
                         try {
                             const randomBlockId = getRandomBlock();
                             const block = dimension.getBlock(blockLoc);
 
                             if (block) {
-                                block.setType(randomBlockId);
+                                if (randomBlockData.replaceBlock) {
+                                    if (randomBlockData.replaceBlock.includes(block.typeId)) {
+                                        block.setType(randomBlockId);
+                                    }
+                                    else {
+                                        consoleOutput(`座標 ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z} のブロックは replaceBlock リストに含まれていません。`);
+                                    }
+                                }
+                                else {
+                                    block.setType(randomBlockId);
+                                }
+
                             } else {
                                 consoleOutput(`座標 ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z} にブロックが見つかりません。`);
                             }
@@ -97,9 +125,8 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                             sendMessage(`ブロック設置エラー at ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z}: ${error}`);
                         }
                     });
-
-
                 }
+
 
             } catch (error) {
                 consoleOutput(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);

@@ -1,7 +1,7 @@
 import { Module, moduleManager } from '../../module/module';
 import { Handler } from '../../module/Handler';
 import "./utils/import";
-import { registerChangeTagCommand } from './command/changeTag';
+import { registerChangeTag2Command, registerChangeTagCommand } from './command/changeTag';
 import { registerChestFillCommand } from './command/chestFill';
 import { registerCloneBlockCommand } from './command/cloneBlock';
 import { registerCloseFormCommand } from './command/closeForm';
@@ -13,6 +13,7 @@ import { registerResetScoreCommand } from './command/resetScore';
 import { registerScoreDeleteCommand } from './command/scoreDelete';
 import { registerTeamCommand } from './command/team';
 import { registerTeamCountCommand } from './command/teamCount';
+import { registerRegionControlCommand } from './command/Region';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -103,6 +104,8 @@ class ScoreModule implements Module {
     registerChestFillCommand(handler, this.name);
     registerRandomBlockCommand(handler, this.name);
     registerRandomDropCommand(handler, this.name);
+    registerRegionControlCommand(handler, this.name);
+    registerChangeTag2Command(handler, this.name);
   }
   
 }

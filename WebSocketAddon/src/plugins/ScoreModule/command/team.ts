@@ -9,7 +9,6 @@ export function registerTeamCommand(handler: Handler, moduleName: string) {
         execute: (message, event) => {
             const args = message.replace(/^\/team\s+/, '').split(/\s+/);
 
-            // メッセージ送信関数を定義（プレイヤーとコンソールで処理を分ける）
             const sendMessage = (message: string) => {
                 if (event.sourceEntity instanceof Player) {
                     const player = event.sourceEntity;
