@@ -13,7 +13,6 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
             };
             try {
                 const args = message.replace(/^\/teamCount\s+/, '').split(/\s+/);
-                console.warn(args.length);
 
                 if (args.length < 2) {
                     consoleOutput(

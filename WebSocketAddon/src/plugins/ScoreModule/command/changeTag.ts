@@ -81,7 +81,6 @@ export function registerChangeTag2Command(handler: Handler, moduleName: string) 
         description: '指定されたタグを別のタグに変更し、オプションでコマンド実行や遅延を設定します。',
         usage: 'tagChange2 <JSON>\n <JSON>: {"from":"oldTag", ... , "hideDisplayAfter": 3}', // usageを更新
         execute: (_message, event) => {
-            // ... (前略) ...
             const consoleOutput = (message: string) => {
                 console.warn(message);
             };

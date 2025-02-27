@@ -14,6 +14,7 @@ import { registerScoreDeleteCommand } from './command/scoreDelete';
 import { registerTeamCommand } from './command/team';
 import { registerTeamCountCommand } from './command/teamCount';
 import { registerRegionControlCommand } from './command/Region';
+import { registerCheckBlockCommand } from './command/checkBlock';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -106,8 +107,9 @@ class ScoreModule implements Module {
     registerRandomDropCommand(handler, this.name);
     registerRegionControlCommand(handler, this.name);
     registerChangeTag2Command(handler, this.name);
+    registerCheckBlockCommand(handler, this.name)
   }
-  
+
 }
 export const ver = "0.1.0"
 const ScoreModules = new ScoreModule();

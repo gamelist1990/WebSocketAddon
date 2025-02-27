@@ -80,7 +80,7 @@ export function registerTeamCommand(handler: Handler, moduleName: string) {
 
                     // プレイヤーをチームに割り当て
                     teamAssignments[player.name] = teamIndex;
-                    objective.setScore(player.name, teamIndex);
+                    objective.setScore(player, teamIndex);
                     teamSizes[teamIndex]++;
 
                     // 次のプレイヤーのためにチームインデックスを更新（必要に応じてローテーション）

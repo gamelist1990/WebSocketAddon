@@ -21,7 +21,7 @@ interface RegionData {
 
 export function registerRegionControlCommand(handler: Handler, moduleName: string) {
     const regionDataMap: { [key: string]: RegionData } = {};
-    const autoDeleteTimeout = 20 * 30;
+    const autoDeleteTimeout = 1;
 
     const showRegionParticles = (dimension: Dimension, start: Vector3, end: Vector3, playerLocation: Vector3, particleRange: number, particleMinDistance: number, ignoreY: number | undefined) => {
         const density = 0.5;
@@ -166,7 +166,7 @@ export function registerRegionControlCommand(handler: Handler, moduleName: strin
                     const player = event.sourceEntity;
                     system.run(() => player.sendMessage(message));
                 } else {
-                    consoleOutput(message);
+                   // consoleOutput(message);
                 }
             };
             const dimension = event.sourceEntity?.dimension ?? world.getDimension('overworld');
@@ -194,7 +194,7 @@ export function registerRegionControlCommand(handler: Handler, moduleName: strin
         for (const regionName in regionDataMap) {
             if (currentTick - regionDataMap[regionName].lastUpdated > autoDeleteTimeout) {
                 delete regionDataMap[regionName];
-                console.warn(`リージョン "${regionName}" が自動削除されました。`);
+               // console.warn(`リージョン "${regionName}" が自動削除されました。`);
             }
         }
 

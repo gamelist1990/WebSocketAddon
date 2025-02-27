@@ -18,5 +18,8 @@
   "dependencies": {
     "@minecraft/server": "^1.18.0-beta.1.21.61-stable",
     "@minecraft/server-ui": "^1.4.0-beta.1.21.61-stable"
+  },
+  "devDependencies": {
+    "@minecraft/vanilla-data": "^1.21.62"
   }
 }

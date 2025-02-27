@@ -2,13 +2,6 @@ import { Player, system, world } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
 export function registerCheckBlockCommand(handler: Handler, moduleName: string) {
-    let blockCache: {
-        [key: string]: {
-            timestamp: number;
-            blocks: { x: number; y: number; z: number; typeId: string }[];
-        };
-    } = {};
-
     handler.registerCommand('checkBlock', {
         moduleName: moduleName,
         description: '指定された範囲内のブロックを検索し、条件に一致するブロックに対してコマンドを実行します。',
@@ -53,6 +46,7 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                     sendMessage('"checkBlocks" は配列である必要があります。');
                     return;
                 }
+
                 if (checkData.checkBlocks.length === 0) {
                     sendMessage('"checkBlocks" は空にできません');
                     return;
@@ -65,38 +59,34 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 }
 
                 const dimension = event.sourceEntity?.dimension ?? world.getDimension('overworld');
-                const dimensionId = dimension.id;
-                const start = checkData.start;
-                const end = checkData.end;
 
-                if (blockCache[dimensionId] && (Date.now() - blockCache[dimensionId].timestamp) <= 1000) {
-                    for (const cachedBlock of blockCache[dimensionId].blocks) {
-                        if (checkData.checkBlocks.includes(cachedBlock.typeId)) {
-                            executeCommand(checkData.runCommand, cachedBlock.x, cachedBlock.y, cachedBlock.z, dimension);
-                        }
-                    }
-                } else {
-                    let newBlocks: { x: number; y: number; z: number; typeId: string }[] = [];
+                // 座標の順序を保証
+                const start = {
+                    x: Math.min(checkData.start.x, checkData.end.x),
+                    y: Math.min(checkData.start.y, checkData.end.y),
+                    z: Math.min(checkData.start.z, checkData.end.z),
+                };
+                const end = {
+                    x: Math.max(checkData.start.x, checkData.end.x),
+                    y: Math.max(checkData.start.y, checkData.end.y),
+                    z: Math.max(checkData.start.z, checkData.end.z),
+                };
 
-                    for (let x = start.x; x <= end.x; x++) {
-                        for (let y = start.y; y <= end.y; y++) {
-                            for (let z = start.z; z <= end.z; z++) {
-                                const block = dimension.getBlock({ x, y, z });
-                                if (!block) continue;
-                                newBlocks.push({ x: x, y: y, z: z, typeId: block.typeId });
 
-                                if (checkData.checkBlocks.includes(block.typeId)) {
-                                    executeCommand(checkData.runCommand, x, y, z, dimension);
-                                }
+                for (let x = start.x; x <= end.x; x++) {
+                    for (let y = start.y; y <= end.y; y++) {
+                        for (let z = start.z; z <= end.z; z++) {
+                            const block = dimension.getBlock({ x, y, z });
+                            const typeId = block?.typeId ?? "minecraft:air";
+
+                            if (checkData.checkBlocks.includes(typeId)) {
+                                executeCommand(checkData.runCommand, x, y, z, dimension);
                             }
                         }
                     }
-
-                    blockCache[dimensionId] = {
-                        timestamp: Date.now(),
-                        blocks: newBlocks,
-                    };
                 }
+
+
 
             } catch (error) {
                 consoleOutput(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);
@@ -111,18 +101,10 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 command = command.replaceAll("{z}", z.toString());
 
                 try {
-                    dimension.runCommandAsync(command)
-                        .then(_result => {
-                            // console.log(`Command result: ${result}`);
-                            //debug
-                        })
-                        .catch(error => {
-                            consoleOutput(`コマンド実行中に例外: ${error} \n ${command}`);
-                            sendMessage(`コマンド実行中に例外: ${error}`);
-                        });
+                    dimension.runCommandAsync(command);
                 } catch (error) {
-                    consoleOutput(`コマンド実行中にエラー（同期）: ${error} \n ${command}`);
-                    sendMessage(`コマンド実行中にエラー（同期）: ${error}`);
+                    consoleOutput(`コマンド実行中にエラー（非同期）: ${error} \n ${command}`);
+                    sendMessage(`コマンド実行中にエラー（非同期）: ${error}`);
                 }
             }
         },
