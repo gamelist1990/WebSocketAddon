@@ -2,7 +2,6 @@ import { Dimension, Player, system, world } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
 export function registerChangeTagCommand(handler: Handler, moduleName: string) {
-    // ... (registerChangeTagCommand は変更なし) ...
     handler.registerCommand('tagChange1', {
         moduleName: moduleName,
         description: `指定されたタグを持つプレイヤーのタグを別のタグに変更します。`,

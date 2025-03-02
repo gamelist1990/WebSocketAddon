@@ -75,7 +75,6 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                     }
                                 });
                             } else {
-                                consoleOutput('同数の場合のコマンドが定義されていません。');
                             }
                         } else if (winningTeam !== '') {
                             // 最大人数のチームがある場合の処理 (従来の動作)

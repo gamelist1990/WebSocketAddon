@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/gamelist1990/WebSocketAddon#readme",
   "dependencies": {
-    "@minecraft/server": "^1.18.0-beta.1.21.61-stable",
+    "@minecraft/server": "^1.18.0-beta.1.21.62-stable",
     "@minecraft/server-ui": "^1.4.0-beta.1.21.61-stable"
   },
   "devDependencies": {

@@ -15,6 +15,8 @@ import { registerTeamCommand } from './command/team';
 import { registerTeamCountCommand } from './command/teamCount';
 import { registerRegionControlCommand } from './command/Region';
 import { registerCheckBlockCommand } from './command/checkBlock';
+import { registerTagCommand } from './command/tag';
+import { registerItemCommand } from './command/Item/custom';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -88,7 +90,39 @@ class ScoreModule implements Module {
       §9keepOnDeath: 死んだ時に保持するか (省略可)。\n
       §9enchantments: エンチャント (省略可)。例: [{"type":"sharpness","level":3}]\n
       §9weight: 出現率 (重み)。\n
-    §8dropCount: ドロップ数 (省略可、デフォルト1)。§r`;
+    §8dropCount: ドロップ数 (省略可、デフォルト1)。§r\n
+§b- regionControl <JSON>§r: 指定した範囲(リージョン)内のプレイヤーに対して、様々な効果を付与します。\n
+  §7<JSON>§r: リージョンの設定を記述したJSON。 \n
+  §8例: [{"regionName":"name1", "start":{"x":0,"y":60,"z":0}, "end":{"x":10,"y":70,"z":10}, "tag":"tag1", "particle":true, "teleport":true, "teleportLocation":{"x":5,"y":65,"z":5}, "particleRange": 5, "particleMinDistance": 2, "ignoreY": 50, "area":{"scoreboardObjective":"objective", "scoreName":"name", "maxValue": 100}}]\n
+    §8regionName: リージョン名 (文字列)。\n
+    §8start: 開始座標 (x, y, z)。\n
+    §8end: 終了座標 (x, y, z)。\n
+    §8tag: リージョン内にいるプレイヤーに付与するタグ (文字列)。\n
+    §8particle: パーティクルを表示するか (true/false)。\n
+    §8teleport: リージョン内にいるプレイヤーを指定座標にテレポートさせるか (true/false)。\n
+    §8teleportLocation: テレポート先の座標 (teleportがtrueの場合)。\n
+    §8particleRange: パーティクルを表示する範囲(？)。\n
+    §8particleMinDistance: パーティクルの最小距離(？)。\n
+    §8ignoreY: Y座標を無視するか(？)。\n
+    §8area: スコアボード関連の設定(？)。\n
+      §9scoreboardObjective: スコアボードのオブジェクト名。\n
+      §9scoreName: スコア名\n
+      §9maxValue: スコアの最大値。\n
+§b- tagChange2 <JSON>§r: 複数のプレイヤーのタグを一括で変更します。\n
+  §7<JSON>§r: {"from":"oldTag", ... , "hideDisplayAfter": 3}の形式\n
+    §8from: 変更前のタグ名\n
+    §8...:  '新しいタグ名': '古いタグ名'という形でタグの対応を記述します。\n
+    §8hideDisplayAfter: 変更後に表示を隠すまでの時間(秒)。\n
+§b- checkBlock <JSON>§r: 指定範囲内に特定のブロックが存在するか確認し、存在する場合はコマンドを実行します。\n
+  §7<JSON>§r: {"start":{"x":0,"y":64,"z":0},"end":{"x":10,"y":70,"z":10},"checkBlocks":["minecraft:dirt","minecraft:stone"],"runCommand":"say Found block at {x} {y} {z}"}の形式\n
+    §8start: 開始座標 (x, y, z)。\n
+    §8end: 終了座標 (x, y, z)。\n
+    §8checkBlocks: 確認するブロックIDの配列。\n
+    §8runCommand: ブロックが見つかった場合に実行するコマンド。{x}, {y}, {z} で座標を取得可能。\n
+§b- tag <add|remove> <タグ名>§r: プレイヤーにタグを追加/削除します。\n
+  §7add§r: タグを追加します。\n
+  §7remove§r: タグを削除します。\n
+  §7<タグ名>§r: 追加/削除するタグ名。`;
 
 
 
@@ -108,9 +142,13 @@ class ScoreModule implements Module {
     registerRegionControlCommand(handler, this.name);
     registerChangeTag2Command(handler, this.name);
     registerCheckBlockCommand(handler, this.name)
+    registerTagCommand(handler, this.name);
+    registerItemCommand(handler,this.name)
   }
 
 }
+
+
 export const ver = "0.1.0"
 const ScoreModules = new ScoreModule();
 moduleManager.registerModule(ScoreModules);

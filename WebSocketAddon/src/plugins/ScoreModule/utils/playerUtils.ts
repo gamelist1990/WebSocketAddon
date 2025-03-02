@@ -1,5 +1,5 @@
 // src/utils/playerUtils.ts
-import { world } from "@minecraft/server";
+import { InputMode, MemoryTier, PlatformType, Player, world } from "@minecraft/server";
 import { getServerUptime } from "./timeUtils";
 import { formatTimestampJST } from "./timeUtils";
 import { ver } from "../main";
@@ -101,3 +101,54 @@ export function resolvePlayerName(key: string): string {
 
     return playerNameResolved;
 }
+
+
+export function clientdevice(player: Player): number {
+    const systemInfo = player.clientSystemInfo;
+    switch (systemInfo.platformType) {
+        case PlatformType.Desktop:
+            return 0; //PC
+        case PlatformType.Mobile:
+            return 1; //iPhone
+        case PlatformType.Console:
+            return 2; //console全般
+        default:
+            return -1;//不明
+    }
+}
+
+
+export function InputType(player: Player): number {
+    const inputMode = player.inputInfo;
+    switch (inputMode.lastInputModeUsed) {
+        case InputMode.KeyboardAndMouse:
+            return 0;
+        case InputMode.Gamepad:
+            return 1;
+        case InputMode.MotionController:
+            return 2;
+        case InputMode.Touch:
+            return 3;
+        default:
+            return -1;
+    }
+}
+
+export function getMemoryTier(player: Player): number {
+    const systemInfo = player.clientSystemInfo;
+    switch (systemInfo.memoryTier) {
+        case MemoryTier.SuperLow:
+            return 0;
+        case MemoryTier.Low:
+            return 1;
+        case MemoryTier.Mid:
+            return 2;
+        case MemoryTier.High:
+            return 3;
+        case MemoryTier.SuperHigh:
+            return 4;
+        default:
+            return -1;
+    }
+}
+

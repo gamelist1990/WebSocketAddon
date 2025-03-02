@@ -175,6 +175,7 @@ class AttackModule implements Module {
         })
         this.incrementDeathCount(deadEntity);
 
+        //@ts-ignore
         if (cause === EntityDamageCause.suicide) {
             this.playerAttackMap.delete(deadEntity.id);
             this.removeTags(deadEntity, cause);

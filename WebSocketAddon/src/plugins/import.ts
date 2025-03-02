@@ -20,3 +20,4 @@ import "./Form/index";
 
 // ===== その他 (Misc) =====
 import "./Lore/index";
+import "./sumo/index";
