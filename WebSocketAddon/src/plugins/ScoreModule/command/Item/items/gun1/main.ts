@@ -7,305 +7,383 @@ import {
     EntityDamageCause,
     Entity,
 } from "@minecraft/server";
-import { CustomItem } from "../../../../utils/CustomItem";
+import { CustomItem, EventType } from "../../../../utils/CustomItem";
 import { registerCustomItem } from "../../custom";
 
-// --- ピストル ---
-const pistolCooldownTicks = 1;
-const pistolCooldowns = new Map<string, number>();
-const pistolReloadTicks = 40;
-const pistolReloadingPlayers = new Map<string, { endTime: number; reloadAmount: number }>(); // 変更: リロード終了時刻とリロード量を格納
-const pistolMaxAmmo = 16;
-const pistolAmmo = new Map<string, number>();
-const pistolMaxDamage = 10;
-const pistolMinDamage = 5;
-const pistolMaxRange = 10;
-const pistolLore = [
-    "§7----- Pistol Status -----",
-    "",
-    "  Damage  |  §c" + pistolMinDamage + " - " + pistolMaxDamage,
-    "  Range   |  §a" + pistolMaxRange,
-    "  Ammo    |  §b" + pistolMaxAmmo,
-    "",
-    "  Fire      |  右クリ/RightClick",
-    "  Reload    |  右クリ/RightClick(§eXP§r)", // 自動リロード
-    "",
-    "§7----- " + (pistolReloadTicks / 20) + "s Reload -----",
-];
+// --- 抽象クラス BaseGun ---
+abstract class BaseGun {
+    protected cooldowns = new Map<string, number>();
+    protected reloadingPlayers = new Map<string, { endTime: number; reloadAmount: number }>();
+    protected ammo = new Map<string, number>();
+    public customItem: CustomItem;
+    protected reloadPromptShown = new Map<string, boolean>();
 
-const pistolItem = new CustomItem({
-    name: "§bピストル",
-    lore: pistolLore,
-    item: "minecraft:wooden_hoe",
-    amount: 1,
-    rollback: true,
-});
-pistolItem.then((player) => {
-    usePistol(player);
-    updateActionBar(player);
-});
+    constructor(
+        public name: string,
+        public lore: string[],
+        public item: string,
+        public maxAmmo: number,
+        public maxDamage: number,
+        public minDamage: number,
+        public maxRange: number,
+        public cooldownTicks: number,
+        public reloadTicks: number,
+        public particleId: string,
+        public bulletSpeed: number
+    ) {
+        this.customItem = new CustomItem({
+            name: this.name,
+            lore: this.lore,
+            item: this.item,
+            amount: 1,
+            rollback: true,
+        });
 
-function usePistol(player: Player) {
-    const playerName = player.name;
-
-    // リロード中のプレイヤーは処理をスキップ(ただし、以降の自動リロード判定は行う)
-    if (pistolReloadingPlayers.has(playerName)) {
-        // アクションバーの更新はupdateActionBarで行う
-        return;
-    }
-
-    // クールダウン中の処理
-    if (pistolCooldowns.has(playerName)) {
-        const endTick = pistolCooldowns.get(playerName)!;
-        if (system.currentTick < endTick) {
-            const remainingSeconds = ((endTick - system.currentTick) / 20).toFixed(1);
-            system.run(() => {
-                player.onScreenDisplay.setActionBar(`§cクールダウン中§6(§f${remainingSeconds}§6秒)`);
-            })
-            return;
-        }
-    }
-
-    let currentAmmo = pistolAmmo.get(playerName) ?? pistolMaxAmmo;
-
-    // 自動リロードの判定：弾が0以下で、リロード中でない場合
-    if (currentAmmo <= 0 && !pistolReloadingPlayers.has(playerName)) {
-        reloadPistol(player);
-        return; // リロード処理後は射撃しない
-    }
-
-    // 射撃処理 (弾が0より大きい場合)
-    pistolAmmo.set(playerName, --currentAmmo);
-    pistolCooldowns.set(playerName, system.currentTick + pistolCooldownTicks);
-    updateActionBar(player);
-
-    system.run(() => {
-        const maxDamage = pistolMaxDamage;
-        const minDamage = pistolMinDamage;
-        const maxRange = pistolMaxRange;
-        const bulletSpeed = 1;
-        const minY = -64;
-        const maxY = 319;
-
-        const playSound = (soundId: string, options?: PlayerSoundOptions) => player.playSound(soundId, options);
-        playSound("fire.ignite", { pitch: 1.5 });
-        system.runTimeout(() => playSound("fire.ignite", { pitch: 1.2 }), 2);
-        system.runTimeout(() => playSound("random.click", { pitch: 1.8 }), 3);
-
-        fireProjectile(player, maxDamage, minDamage, maxRange, bulletSpeed, minY, maxY, "minecraft:arrow_spell_emitter",
-            (hitEntity, damage) => { hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack }); }
-        );
-    });
-}
-
-function reloadPistol(player: Player) {
-    const playerName = player.name;
-
-    // 既にリロード中の場合は処理をスキップ
-    if (pistolReloadingPlayers.has(playerName)) {
-        return;
-    }
-
-    const availableXp = player.level;
-    if (availableXp <= 0) {
-        player.onScreenDisplay.setActionBar("§cリロードに必要なXPがありません!");
-        return;
-    }
-
-    const reloadAmount = Math.min(availableXp, pistolMaxAmmo);
-    pistolReloadingPlayers.set(playerName, { endTime: system.currentTick + pistolReloadTicks, reloadAmount }); // 変更: リロード情報をセット
-    updateActionBar(player); // アクションバー更新 (リロード開始時)
-
-
-    system.run(() => {
-        const playSound = (soundId: string, options?: PlayerSoundOptions) => player.playSound(soundId, options);
-        playSound("fire.ignite", { pitch: 0.8 });
-
-        system.runTimeout(() => {
-            player.addLevels(-reloadAmount);
-            pistolAmmo.set(playerName, (pistolAmmo.get(playerName) ?? 0) + reloadAmount);
-            pistolReloadingPlayers.delete(playerName);
-            updateActionBar(player);
-            playSound("item.shield.block", { pitch: 1.5 });
-        }, pistolReloadTicks);
-    })
-}
-
-
-// --- アサルトライフル ---
-const assaultRifleCooldownTicks = 1;
-const assaultRifleCooldowns = new Map<string, number>();
-const assaultRifleBurstIntervalTicks = 1;
-const assaultRifleReloadTicks = 60;
-const assaultRifleReloadingPlayers = new Map<string, { endTime: number; reloadAmount: number }>(); // 変更: リロード終了時刻とリロード量を格納
-const assaultRifleMaxAmmo = 32;
-const assaultRifleAmmo = new Map<string, number>();
-const assaultRifleMaxDamage = 3;
-const assaultRifleMinDamage = 1;
-const assaultRifleMaxRange = 20;
-
-
-const assaultRifleLore = [
-    "§7----- Assault Rifle Status -----",
-    "",
-    "  Damage      |  §c" + assaultRifleMinDamage + " - " + assaultRifleMaxDamage,
-    "  Range       |  §a" + assaultRifleMaxRange,
-    "  Ammo        |  §b" + assaultRifleMaxAmmo,
-    "  Burst       |  §63",
-    "",
-    "  Fire        |  右クリ/RightClick",
-    "  Reload      |  右クリ/RightClick(§eXP§r)",
-    "",
-    "§7----- " + (assaultRifleReloadTicks / 20) + "s Reload / " + assaultRifleBurstIntervalTicks + "tick Burst -----",
-];
-
-const assaultRifleItem = new CustomItem({
-    name: "§aアサルトライフル",
-    lore: assaultRifleLore,
-    item: "minecraft:iron_hoe",
-    amount: 1,
-});
-
-assaultRifleItem.then((player) => {
-    useAssaultRifle(player);
-    updateActionBar(player);
-});
-
-function useAssaultRifle(player: Player) {
-    const playerName = player.name;
-
-    // リロード中のプレイヤーは処理をスキップ (ただし、アクションバーの更新は行う)
-    if (assaultRifleReloadingPlayers.has(playerName)) {
-        // アクションバーの更新は updateActionBar で行う
-        return;
-    }
-
-    if (assaultRifleCooldowns.has(playerName)) {
-        const endTick = assaultRifleCooldowns.get(playerName)!;
-        if (system.currentTick < endTick) {
-            const remainingSeconds = ((endTick - system.currentTick) / 20).toFixed(1);
-            player.onScreenDisplay.setActionBar(`§cクールダウン中§6(§f${remainingSeconds}§6秒)`);
-            return;
-        }
-    }
-
-    let currentAmmo = assaultRifleAmmo.get(playerName) ?? assaultRifleMaxAmmo;
-
-    // 自動リロード
-    if (currentAmmo <= 0 && !assaultRifleReloadingPlayers.has(playerName)) {
-        reloadAssaultRifle(player);
-        return; // リロード後はバースト射撃をしない
-    }
-    // バースト射撃関数
-    function fireBurst(shotCount: number) {
-        system.run(() => {
-            if (shotCount <= 0) {
-                assaultRifleCooldowns.set(playerName, system.currentTick + assaultRifleCooldownTicks);
-                return;
+        this.customItem.then((player, eventData) => {
+            if (eventData.eventType === EventType.ItemUse) {
+                this.use(player);
+                this.updateActionBar(player);
+            } else if (eventData.eventType === EventType.EntityHit || eventData.eventType === EventType.BlockHit) {
+                this.reload(player); // forcedReload 引数を削除
             }
-
-            if (currentAmmo <= 0) {
-                system.run(() => {
-                    player.playSound("mob.villager.no");
-                    player.onScreenDisplay.setActionBar("§c弾切れです! リロードしてください。");
-                })
-                return;
-            }
-
-            assaultRifleAmmo.set(playerName, --currentAmmo);
-            updateActionBar(player);
-
-            const maxDamage = assaultRifleMaxDamage;
-            const minDamage = assaultRifleMinDamage;
-            const maxRange = assaultRifleMaxRange;
-            const bulletSpeed = 1.5;
-            const minY = -64;
-            const maxY = 319;
-
-            system.run(() => {
-                const playSound = (soundId: string, options?: PlayerSoundOptions) => player.playSound(soundId, options);
-                playSound("fire.ignite", { pitch: 1.8, volume: 0.8 });
-            })
-
-            fireProjectile(player, maxDamage, minDamage, maxRange, bulletSpeed, minY, maxY, "minecraft:small_soul_fire_flame",
-                (hitEntity, damage) => { hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack }); }
-            );
-
-            system.runTimeout(() => { fireBurst(shotCount - 1); }, assaultRifleBurstIntervalTicks);
         });
     }
-    const burstCount = 3;
-    fireBurst(burstCount); // バースト射撃開始
 
-}
+    abstract use(player: Player): void;
 
-function reloadAssaultRifle(player: Player) {
-    const playerName = player.name;
+    // forcedReload 引数を削除
+    protected reload(player: Player) {
+        const playerName = player.name;
 
-    // 既にリロード中の場合は処理をスキップ
-    if (assaultRifleReloadingPlayers.has(playerName)) {
-        return;
-    }
+        if (this.reloadingPlayers.has(playerName)) {
+            return;
+        }
 
-    const availableXp = player.level;
-    if (availableXp <= 0) {
-        system.run(()=>{
+        let currentAmmo = this.ammo.get(playerName) ?? this.maxAmmo;
+
+        if (currentAmmo >= this.maxAmmo) {
+            player.onScreenDisplay.setActionBar("§c弾薬はすでに満タンです!");
+            return;
+        }
+
+        // XP チェック (常に必要)
+        const availableXp = player.level;
+        if (availableXp <= 0) {
             player.onScreenDisplay.setActionBar("§cリロードに必要なXPがありません!");
-        })
-        return;
+            return;
+        }
+
+        // リロード量を計算 (XP の範囲内、かつ、上限を超えない)
+        const reloadAmount = Math.min(availableXp, this.maxAmmo - currentAmmo);
+
+        // リロード量が 0 の場合は、処理を中断
+        if (reloadAmount <= 0) {
+            player.onScreenDisplay.setActionBar("§cリロードに必要なXPがありません!");
+            return;
+        }
+
+        this.reloadingPlayers.set(playerName, { endTime: system.currentTick + this.reloadTicks, reloadAmount });
+        this.updateActionBar(player);
+
+        system.run(() => {
+            this.playSound(player, "random.lever_click", { pitch: 0.8 }); // よりリアルなリロード音
+
+            system.runTimeout(() => {
+                // XP を消費 (常に消費)
+                player.addLevels(-reloadAmount);
+                this.ammo.set(playerName, currentAmmo + reloadAmount);
+                this.reloadingPlayers.delete(playerName);
+                this.updateActionBar(player);
+                this.playSound(player, "item.shield.block", { pitch: 1.5 });  // リロード完了音をより適切に
+            }, this.reloadTicks);
+        });
     }
-    const reloadAmount = Math.min(availableXp, assaultRifleMaxAmmo);
-    assaultRifleReloadingPlayers.set(playerName, { endTime: system.currentTick + assaultRifleReloadTicks, reloadAmount }); //変更: リロード情報をセット
-    updateActionBar(player); // アクションバー更新 (リロード開始時)
+    protected fireProjectile(player: Player, onHit: (hitEntity: Entity, damage: number) => void) {
 
-    system.run(() => {
-        const playSound = (soundId: string, options?: PlayerSoundOptions) => player.playSound(soundId, options);
-        playSound("fire.ignite", { pitch: 0.8 });
+        const headLocation = player.getHeadLocation();
+        const direction = player.getViewDirection();
+
+        if (headLocation.y < -64 || headLocation.y > 319) {
+            player.onScreenDisplay.setActionBar("初期位置が不正です");
+            return;
+        }
+
+        const raycastOptions: EntityRaycastOptions = { maxDistance: this.maxRange };
+        const hitResult = player.getEntitiesFromViewDirection(raycastOptions)[0];
+        const hitEntity = hitResult?.entity;
+        const hitDistance = hitResult ? distance(headLocation, hitResult.entity.location) : this.maxRange;
+
+        for (let d = 0; d <= this.maxRange; d += this.bulletSpeed) {
+            const delayTicks = d / this.bulletSpeed;
+            system.runTimeout(() => {
+                try {
+                    const particlePos: Vector3 = {
+                        x: headLocation.x + direction.x * d,
+                        y: Math.min(319, Math.max(-64, headLocation.y + direction.y * d)),
+                        z: headLocation.z + direction.z * d
+                    };
+                    player.dimension.spawnParticle(this.particleId, particlePos);
+
+                    if (hitEntity && d >= hitDistance) {
+                        const damage = Math.max(this.minDamage, this.maxDamage / (1 + 0.2 * hitDistance));
+                        onHit(hitEntity, damage);
+                        return;
+                    }
+                } catch (error: any) {
+                    console.error("Error in projectile loop:", error, error.stack);
+                }
+            }, delayTicks);
+        }
+    }
 
 
-        system.runTimeout(() => {
-            player.addLevels(-reloadAmount);
-            assaultRifleAmmo.set(playerName, (assaultRifleAmmo.get(playerName) ?? 0) + reloadAmount);
-            assaultRifleReloadingPlayers.delete(playerName);
-            updateActionBar(player);
-            playSound("item.shield.block", { pitch: 1.5 });
-        }, assaultRifleReloadTicks);
-    })
+    protected updateActionBar(player: Player) {
+
+        system.run(() => {
+            const itemStack = player.getComponent('minecraft:inventory')?.container?.getItem(player.selectedSlotIndex);
+            if (!itemStack || itemStack.typeId !== this.item || itemStack.nameTag !== this.name) {
+                return;
+            }
+
+            const playerName = player.name;
+            const ammoCount = this.ammo.get(playerName) ?? this.maxAmmo;
+            const reloadingData = this.reloadingPlayers.get(playerName);
+
+
+            if (this.reloadPromptShown.get(playerName)) {
+                this.reloadPromptShown.set(playerName, false);
+                return;
+            }
+
+            if (reloadingData) {
+                const remainingTicks = reloadingData.endTime - system.currentTick;
+                const remainingSeconds = (remainingTicks / 20).toFixed(1);
+
+                if (remainingTicks > 0) {
+                    const reloadProgress = Math.floor((reloadingData.reloadAmount * (this.reloadTicks - remainingTicks)) / this.reloadTicks);
+                    player.onScreenDisplay.setActionBar(`リロード中... (${remainingSeconds}秒)  [${reloadProgress} / ${reloadingData.reloadAmount}]`);
+                } else {
+
+                    player.onScreenDisplay.setActionBar(`§aリロード完了!  ${ammoCount} / ${this.maxAmmo}`);
+                }
+            } else {
+
+                if (ammoCount > 0) {
+                    const ammoDisplay = `${ammoCount} / ${this.maxAmmo}`;
+                    player.onScreenDisplay.setActionBar(`残弾数: ${ammoDisplay}`);
+                }
+            }
+        });
+    }
+    protected playSound(player: Player, soundId: string, options?: PlayerSoundOptions, world?: boolean) {
+        system.run(() => {
+            if (!world) {
+                player.playSound(soundId, options);
+            }
+            if (world) {
+                player.dimension.playSound(soundId, player.location, options)
+            }
+        })
+    }
+
+    protected checkCooldown(player: Player): boolean {
+        const playerName = player.name;
+        if (this.cooldowns.has(playerName)) {
+            const endTick = this.cooldowns.get(playerName)!;
+            if (system.currentTick < endTick) {
+                const remainingSeconds = ((endTick - system.currentTick) / 20).toFixed(1);
+                system.run(() => {
+                    player.onScreenDisplay.setActionBar(`§cクールダウン中§6(§f${remainingSeconds}§6秒)`);
+                });
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected showReloadPrompt(player: Player) {
+        const playerName = player.name;
+        system.run(() => {
+            this.playSound(player, "mob.villager.no");
+            player.onScreenDisplay.setActionBar("§c弾切れです! ブロック/エンティティを攻撃してリロードしてください。");
+            this.reloadPromptShown.set(playerName, true);
+
+        });
+    }
 }
 
-function fireProjectile(player: Player, maxDamage: number, minDamage: number, maxRange: number, bulletSpeed: number, minY: number, maxY: number, particleId: string, onHit: (hitEntity: Entity, damage: number) => void) {
-    const headLocation = player.getHeadLocation();
-    const direction = player.getViewDirection();
-    if (headLocation.y < minY || headLocation.y > maxY) {
-        player.onScreenDisplay.setActionBar("初期位置が不正です");
-        return;
+// --- Pistol クラス ---
+class Pistol extends BaseGun {
+    constructor() {
+        const pistolLore = [
+            "§7----- Pistol Status -----",
+            "",
+            "  Damage  |  §c" + 5 + " - " + 10,
+            "  Range   |  §a" + 10,
+            "  Ammo    |  §b" + 16,
+            "",
+            "  Fire      |  右クリ/RightClick",
+            "  Reload    |  攻撃/Attack(§eXP§r)",
+            "",
+            "§7----- " + (40 / 20) + "s Reload -----",
+        ];
+        super("§bピストル", pistolLore, "minecraft:wooden_hoe", 16, 10, 5, 10, 1, 40, "minecraft:balloon_gas_particle", 1);
     }
 
-    const raycastOptions: EntityRaycastOptions = { maxDistance: maxRange };
-    const hitResult = player.getEntitiesFromViewDirection(raycastOptions)[0];
-    const hitEntity = hitResult?.entity;
-    const hitDistance = hitResult ? distance(headLocation, hitResult.entity.location) : maxRange;
+    use(player: Player) {
+        const playerName = player.name;
 
-    for (let d = 0; d <= maxRange; d += bulletSpeed) {
-        const delayTicks = d / bulletSpeed;
-        system.runTimeout(() => {
-            try {
-                const particlePos: Vector3 = {
-                    x: headLocation.x + direction.x * d,
-                    y: Math.min(maxY, Math.max(minY, headLocation.y + direction.y * d)),
-                    z: headLocation.z + direction.z * d
-                };
-                player.dimension.spawnParticle(particleId, particlePos);
+        if (this.reloadingPlayers.has(playerName)) { 
+            return;
+        }
+        if (this.checkCooldown(player)) { 
+            return;
+        }
 
-                if (hitEntity && d >= hitDistance) {
-                    const damage = Math.max(minDamage, maxDamage / (1 + 0.2 * hitDistance));
-                    onHit(hitEntity, damage);
+
+        let currentAmmo = this.ammo.get(playerName) ?? this.maxAmmo;
+
+        if (currentAmmo <= 0) {
+            this.showReloadPrompt(player);
+            return;
+        }
+
+        this.ammo.set(playerName, --currentAmmo);
+        this.cooldowns.set(playerName, system.currentTick + this.cooldownTicks);
+        this.updateActionBar(player);
+
+        system.run(() => {
+            this.playSound(player, "fire.ignite", { pitch: 1.9, volume: 0.7 }, true); 
+            this.playSound(player, "ambient.weather.rain", { pitch: 2.2, volume: 0.3 }, true);
+            system.runTimeout(() => {
+                this.playSound(player, "random.pop", { pitch: 1.5, volume: 0.3 }, true); 
+            }, 2)
+
+
+            this.fireProjectile(player,
+                (hitEntity, damage) => { hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack }); }
+            );
+        });
+    }
+}
+
+// --- AssaultRifle クラス ---
+class AssaultRifle extends BaseGun {
+    private burstIntervalTicks = 1;
+    constructor() {
+        const assaultRifleLore = [
+            "§7----- Assault Rifle Status -----",
+            "",
+            "  Damage      |  §c" + 1 + " - " + 3,
+            "  Range       |  §a" + 20,
+            "  Ammo        |  §b" + 32,
+            "  Burst       |  §63",
+            "",
+            "  Fire        |  右クリ/RightClick",
+            "  Reload      |  攻撃/Attack(§eXP§r)",
+            "",
+            "§7----- " + (60 / 20) + "s Reload / " + 1 + "tick Burst -----",
+        ];
+        super("§aアサルトライフル", assaultRifleLore, "minecraft:iron_hoe", 32, 3, 1, 20, 1, 60, "minecraft:falling_border_dust_particle", 1.5);
+    }
+
+    use(player: Player) {
+        const playerName = player.name;
+
+        if (this.reloadingPlayers.has(playerName)) {
+            return;
+        }
+        if (this.checkCooldown(player)) {
+            return;
+        }
+
+        let currentAmmo = this.ammo.get(playerName) ?? this.maxAmmo;
+
+        if (currentAmmo <= 0) {
+            this.showReloadPrompt(player);
+            return;
+        }
+
+        // バースト射撃関数 (クロージャを使用)
+        const fireBurst = (shotCount: number) => {
+            system.run(() => {
+                if (shotCount <= 0) {
+                    this.cooldowns.set(playerName, system.currentTick + this.cooldownTicks);
                     return;
                 }
-            } catch (error: any) {
-                console.error("Error in projectile loop:", error, error.stack);
-            }
-        }, delayTicks);
+
+                if (currentAmmo <= 0) {
+                    this.showReloadPrompt(player);
+                    return;
+                }
+
+                this.ammo.set(playerName, --currentAmmo);
+                this.updateActionBar(player);
+
+                // よりリアルなアサルトライフルの射撃音
+                this.playSound(player, "fire.ignite", { pitch: 1.6, volume: 0.5 }, true);
+                this.playSound(player, "cauldron.explode", { pitch: 1.2, volume: 0.2 }, true);  // 小さな爆発音で、発砲の衝撃を表現
+                system.runTimeout(() => {
+                    this.playSound(player, "random.pop", { pitch: 1.8, volume: 0.15 }, true); // 薬莢の音（高め）
+                }, 1);
+
+
+                this.fireProjectile(player,
+                    (hitEntity, damage) => { hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack }); }
+                );
+
+                system.runTimeout(() => { fireBurst(shotCount - 1); }, this.burstIntervalTicks);
+            });
+        };
+        const burstCount = 3;
+        fireBurst(burstCount);
+    }
+}
+
+// --- SniperRifle クラス ---
+class SniperRifle extends BaseGun {
+    constructor() {
+        const sniperRifleLore = [
+            "§7----- Sniper Rifle Status -----",
+            "",
+            "  Damage  |  §c" + 20 + " - " + 40,
+            "  Range   |  §a" + 50,
+            "  Ammo    |  §b" + 5,
+            "",
+            "  Fire      |  右クリ/RightClick",
+            "  Reload    |  攻撃/Attack(§eXP§r)",
+            "",
+            "§7----- " + (80 / 20) + "s Reload -----",
+        ];
+        super("§dスナイパーライフル", sniperRifleLore, "minecraft:golden_hoe", 5, 40, 20, 50, 40, 80, "minecraft:dragon_breath_fire", 3);
+    }
+
+    use(player: Player) {
+        const playerName = player.name;
+        if (this.reloadingPlayers.has(playerName)) {
+            return
+        }
+        if (this.checkCooldown(player)) {
+            return;
+        }
+
+
+        let currentAmmo = this.ammo.get(playerName) ?? this.maxAmmo;
+
+        if (currentAmmo <= 0) {
+            this.showReloadPrompt(player);
+            return;
+        }
+        this.ammo.set(playerName, --currentAmmo);
+        this.cooldowns.set(playerName, system.currentTick + this.cooldownTicks);
+        this.updateActionBar(player);
+
+        this.playSound(player, "ambient.weather.thunder", { pitch: 1.2, volume: 0.8 }, true);
+        system.runTimeout(() => this.playSound(player, "random.explode", { pitch: 1.5, volume: 0.6 }, true), 2);
+
+        this.fireProjectile(player, (hitEntity, damage) => {
+            hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack });
+        });
     }
 }
 
@@ -313,51 +391,10 @@ function distance(pos1: Vector3, pos2: Vector3): number {
     return Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2 + (pos1.z - pos2.z) ** 2);
 }
 
-function updateActionBar(player: Player) {
-    system.run(() => {
-        const itemStack = player.getComponent('minecraft:inventory')?.container?.getItem(player.selectedSlotIndex);
-        let ammoCount = 0;
-        let maxAmmo = 0;
-        let reloadingData: { endTime: number; reloadAmount: number } | undefined;
-        let reloadTicks = 0;
-
-        if (itemStack && itemStack.typeId === pistolItem.item && itemStack.nameTag === pistolItem.name) {
-            ammoCount = pistolAmmo.get(player.name) ?? pistolMaxAmmo;
-            maxAmmo = pistolMaxAmmo;
-            reloadingData = pistolReloadingPlayers.get(player.name); // リロード情報を取得
-            reloadTicks = pistolReloadTicks;
-
-        } else if (itemStack && itemStack.typeId === assaultRifleItem.item && itemStack.nameTag === assaultRifleItem.name) {
-            ammoCount = assaultRifleAmmo.get(player.name) ?? assaultRifleMaxAmmo;
-            maxAmmo = assaultRifleMaxAmmo;
-            reloadingData = assaultRifleReloadingPlayers.get(player.name); // リロード情報を取得
-            reloadTicks = assaultRifleReloadTicks;
-        }
-
-        if (reloadingData) {
-            // リロード中の表示
-            const remainingTicks = reloadingData.endTime - system.currentTick;
-            const remainingSeconds = (remainingTicks / 20).toFixed(1);
-
-            if (remainingTicks > 0) {
-                const reloadProgress = Math.floor((reloadingData.reloadAmount * (reloadTicks - remainingTicks)) / reloadTicks);
-                player.onScreenDisplay.setActionBar(`リロード中... (${remainingSeconds}秒)  [${reloadProgress} / ${reloadingData.reloadAmount}]`);
-            } else {
-                // リロード終了直後の表示 (不要なら削除可)
-                const currentAmmo = pistolAmmo.get(player.name) ?? assaultRifleAmmo.get(player.name) ?? 0;
-                player.onScreenDisplay.setActionBar(`§aリロード完了!  ${currentAmmo} / ${maxAmmo}`);
-            }
-
-        } else {
-            // 通常時の表示 (弾数0の時だけ赤色)
-            const ammoDisplay = ammoCount === 0 ? `§c${ammoCount} / ${maxAmmo}` : `${ammoCount} / ${maxAmmo}`;
-            player.onScreenDisplay.setActionBar(`残弾数: ${ammoDisplay}`);
-        }
-    });
-}
-
-
-
-//登録関数
-registerCustomItem(3, assaultRifleItem);
-registerCustomItem(4, pistolItem);
+// インスタンス生成と登録
+const pistol = new Pistol();
+const assaultRifle = new AssaultRifle();
+const sniperRifle = new SniperRifle();
+registerCustomItem(3, assaultRifle.customItem);
+registerCustomItem(4, pistol.customItem);
+registerCustomItem(5, sniperRifle.customItem);
