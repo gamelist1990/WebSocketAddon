@@ -84,7 +84,7 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 let currentX = start.x;
                 let currentY = start.y;
                 let currentZ = start.z;
-                const CHUNK_SIZE = 4; // チャンクサイズを定数化（必要に応じて調整）
+                const CHUNK_SIZE = 1;
 
                 const intervalId = system.runInterval(() => {
                     const endX = Math.min(currentX + CHUNK_SIZE - 1, end.x);

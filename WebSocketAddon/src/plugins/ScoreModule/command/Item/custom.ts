@@ -5,7 +5,7 @@ import { CustomItem } from "../../utils/CustomItem";
 
 export function registerCustomItem(id: number, customItem: CustomItem): void {
     customItemsMap.set(`${id}`, customItem);
-    console.warn(`${customItem.name} registered`);
+   // console.warn(`${customItem.name} registered`);
 }
 
 const customItemsMap = new Map<string, CustomItem>();
@@ -24,7 +24,7 @@ export function registerItemCommand(handler: Handler, moduleName: string) {
         description: 'CustomItemの付与/情報表示',
         usage: 'item give <itemName> [amount]  |  item info <itemName> | item list',
         execute: (message, event) => {
-            const args = message.trim().split(/\s+/); // 前後の空白削除、空要素削除
+            const args = message.trim().split(/\s+/);
             const player = event.sourceEntity as Player;
 
             if (args.length < 1) { // コマンドとサブコマンドが最低限存在するか

@@ -17,6 +17,7 @@ import { registerRegionControlCommand } from './command/Region';
 import { registerCheckBlockCommand } from './command/checkBlock';
 import { registerTagCommand } from './command/tag';
 import { registerItemCommand } from './command/Item/custom';
+import { registerTransfer } from './command/transfer';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -143,12 +144,13 @@ class ScoreModule implements Module {
     registerChangeTag2Command(handler, this.name);
     registerCheckBlockCommand(handler, this.name)
     registerTagCommand(handler, this.name);
-    registerItemCommand(handler,this.name)
+    registerItemCommand(handler, this.name);
+    registerTransfer(handler, this.name)
   }
 
 }
 
 
-export const ver = "0.1.0"
+export const ver = "0.2.0"
 const ScoreModules = new ScoreModule();
 moduleManager.registerModule(ScoreModules);
