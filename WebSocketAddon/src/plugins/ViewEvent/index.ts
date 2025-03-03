@@ -40,6 +40,19 @@ class ViewEvent implements Module {
     private unregisterEventListeners(): void {
     }
 
+    private isWithinWorldBounds(x: number, y: number, z: number): boolean {
+        const worldMinX = -30000000;
+        const worldMaxX = 29999999;
+        const worldMinY = -64; 
+        const worldMaxY = 219; 
+        const worldMinZ = -30000000;
+        const worldMaxZ = 29999999;
+        return x >= worldMinX && x <= worldMaxX &&
+            y >= worldMinY && y <= worldMaxY &&
+            z >= worldMinZ && z <= worldMaxZ;
+    }
+
+
 
     private checkView() {
         for (const player of world.getAllPlayers()) {
@@ -49,26 +62,33 @@ class ViewEvent implements Module {
 
             const playerData = this.trackedPlayers.get(player.name)!;
 
-            // Block Raycast
             const blockRaycastOptions: BlockRaycastOptions = {
                 maxDistance: 10,
+
             };
             const blockHit = player.getBlockFromViewDirection(blockRaycastOptions);
 
             if (blockHit) {
-                const blockTag = `w:view_block_${blockHit.block.typeId}`;
-                if (playerData.blockTag !== blockTag) {
+                const { x, y, z } = blockHit.block.location;
+
+                if (this.isWithinWorldBounds(x, y, z)) {
+                    const blockTag = `w:view_block_${blockHit.block.typeId}`;
+                    if (playerData.blockTag !== blockTag) {
+                        if (playerData.blockTag) {
+                            player.removeTag(playerData.blockTag);
+                        }
+                        player.addTag(blockTag);
+                        playerData.blockTag = blockTag;
+                    }
+                } else {
                     if (playerData.blockTag) {
                         player.removeTag(playerData.blockTag);
+                        playerData.blockTag = undefined;
                     }
-
-                    1
-
-                    player.addTag(blockTag);
-                    playerData.blockTag = blockTag;
                 }
+
+
             } else {
-                // Remove block tag if not looking at a block
                 if (playerData.blockTag) {
                     player.removeTag(playerData.blockTag);
                     playerData.blockTag = undefined;
@@ -76,27 +96,33 @@ class ViewEvent implements Module {
             }
 
 
-            // Entity Raycast
+            
             const entityRaycastOptions: EntityRaycastOptions = {
-                maxDistance: 10, // Adjust as needed
+                maxDistance: 10,
             };
             const entityHit = player.getEntitiesFromViewDirection(entityRaycastOptions);
 
             if (entityHit.length > 0) {
-                const entity = entityHit[0].entity; // Consider the closest entity
-                const entityTag = `w:view_entity_${entity.typeId}`;
+                const entity = entityHit[0].entity;
 
-                if (playerData.entityTag !== entityTag) {
-                    // Remove old tag
+                if (this.isWithinWorldBounds(entity.location.x, entity.location.y, entity.location.z)) {
+
+                    const entityTag = `w:view_entity_${entity.typeId}`;
+
+                    if (playerData.entityTag !== entityTag) {
+                        if (playerData.entityTag) {
+                            player.removeTag(playerData.entityTag);
+                        }
+                        player.addTag(entityTag);
+                        playerData.entityTag = entityTag;
+                    }
+                } else {
                     if (playerData.entityTag) {
                         player.removeTag(playerData.entityTag);
+                        playerData.entityTag = undefined;
                     }
-                    // Add new tag
-                    player.addTag(entityTag);
-                    playerData.entityTag = entityTag;
                 }
             } else {
-                // Remove entity tag if not looking at an entity
                 if (playerData.entityTag) {
                     player.removeTag(playerData.entityTag);
                     playerData.entityTag = undefined;

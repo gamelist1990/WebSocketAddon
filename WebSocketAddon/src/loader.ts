@@ -16,13 +16,10 @@ async function loadAllImports() {
     }
 }
 
-
-
 //reload コマンド待機用
 system.run(() => {
     main();
 })
-
 //ワールドの初期化処理
 
 async function main() {
