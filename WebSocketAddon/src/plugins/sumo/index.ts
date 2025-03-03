@@ -1,234 +1,196 @@
-import { EntityHitEntityAfterEvent, Player, system, Vector3, world } from "@minecraft/server";
+import { Player, system, Vector3, world } from "@minecraft/server";
 import { Handler } from "../../module/Handler";
 import { Module, moduleManager } from "../../module/module";
 
-// 相撲システム
 class SumoModule implements Module {
     name = "SumoSystem";
     enabledByDefault = true;
 
-
-
-    // 相撲タグのプレフィックスと相撲システム起動用のタグ
     private sumoTagPrefix = "sumo";
-    private pvpSumoTag = "pvpSumo";  
-    private trueSumoTag = "trueSumo"; 
+    private pvpSumoTag = "pvpSumo";
     private maxSumoMatches = 10;
+    private sumoMatches: Map<string, { player1: Player, player2: Player }> = new Map(); // Sumoの対戦情報を格納する Map
+    private announcementTag = "player_sumo";
 
-    private sumoSystemEnabled = false;
-    private sumoTagsInUse: string[] = [];
-
-
-
-
+    private config = {
+        module: {
+            sumoSystem: {
+                enabled: true,
+            }
+        }
+    };
 
     constructor() {
-
         system.runInterval(() => {
-            this.checkSystemStatus();
-            if (!this.sumoSystemEnabled) return; 
+            if (this.config.module.sumoSystem.enabled === false) return;
 
-            const playersWithPvpSumoTag = world.getPlayers({ tags: [this.pvpSumoTag] });
-            playersWithPvpSumoTag.forEach(player => {
+            // pvpSumoタグを持つプレイヤーを処理 (Weakness 付与)
+            world.getPlayers({ tags: [this.pvpSumoTag] }).forEach(player => {
                 if (!this.getSumoTag(player)) {
                     const healthComponent = player.getComponent("minecraft:health");
                     if (healthComponent) {
-                        player.addEffect("weakness", 1, { 
-                            amplifier: 255,
-                            showParticles: false 
-                        });
+                        player.addEffect("weakness", 10, { amplifier: 255, showParticles: false });
                     }
                 }
             });
 
-            if (this.sumoTagsInUse.length === 0) return;
+            // Sumo中のプレイヤーの Weakness を解除
+            Array.from(this.sumoMatches.values()).forEach(({ player1, player2 }) => {
+                if (player1.hasTag(this.pvpSumoTag)) player1.removeEffect("weakness");
+                if (player2.hasTag(this.pvpSumoTag)) player2.removeEffect("weakness");
+            });
 
-            for (const sumoTag of this.sumoTagsInUse) {
-                const playersWithTag = world.getPlayers({ tags: [sumoTag] });
-                if (playersWithTag.length === 1) {
-                    this.determineWinner(playersWithTag[0]); 
-                }
-            }
-
+            // 距離制限のチェックとSumoの終了判定
             this.checkSumoDistance();
-
         }, 4);
-    }
+
+        // entityDie イベントリスナー（勝利判定のみ）
+        world.afterEvents.entityDie.subscribe(event => {
+            if (this.config.module.sumoSystem.enabled === false) return;
+
+            const deadPlayer = event.deadEntity;
+            if (!(deadPlayer instanceof Player)) return;
+
+            const sumoTag = this.getSumoTag(deadPlayer);
+            if (!sumoTag) return;
+
+            const match = this.sumoMatches.get(sumoTag);
+            if (!match) return;
+
+            const winner = match.player1.id === deadPlayer.id ? match.player2 : match.player1;
+            this.determineWinner(winner, sumoTag);
+        });
 
 
-    onEnable(): void {
-        this.registerEventListeners();
-    }
-    onInitialize(): void {
-        this.registerEventListeners();
+        // entityHitEntity イベントリスナー（Sumoの開始判定）
+        world.afterEvents.entityHitEntity.subscribe((event) => {
+            if (this.config.module.sumoSystem.enabled === false) return;
 
-    }
+            const { damagingEntity, hitEntity } = event;
+            if (!(damagingEntity instanceof Player && hitEntity instanceof Player)) return;
 
-    onDisable(): void {
-        this.unregisterEventListeners();
-    }
-
-    private registerEventListeners(): void {
-        world.afterEvents.entityHitEntity.subscribe(this.hitEntity);
-    }
-
-
-    private unregisterEventListeners(): void {
-        world.afterEvents.entityHitEntity.unsubscribe(this.hitEntity);
-    }
-
-
-
-    private hitEntity(event:EntityHitEntityAfterEvent) {
-        if (!this.sumoSystemEnabled) return; 
-
-        const { damagingEntity, hitEntity } = event;
-
-        if (
-            damagingEntity &&
-            damagingEntity.typeId === "minecraft:player" &&
-            hitEntity &&
-            hitEntity.typeId === "minecraft:player"
-        ) {
-            const attackingPlayer = damagingEntity as Player;
-            const hitPlayer = hitEntity as Player;
+            const attackingPlayer = damagingEntity;
+            const hitPlayer = hitEntity;
 
             const attackerTag = this.getSumoTag(attackingPlayer);
-            const hitPlayerTag = this.getSumoTag(hitPlayer);  
+            const hitPlayerTag = this.getSumoTag(hitPlayer);
 
-            if (!attackerTag && !hitPlayerTag && attackingPlayer.hasTag(this.pvpSumoTag)) {
+            // 両プレイヤーが pvpSumo タグを持ち、Sumo中でない場合、新しいSumoを開始
+            if (!attackerTag && !hitPlayerTag && attackingPlayer.hasTag(this.pvpSumoTag) && hitPlayer.hasTag(this.pvpSumoTag)) {
                 const sumoTag = this.generateUniqueSumoTag();
                 if (!sumoTag) {
-                    attackingPlayer.sendMessage("§c相撲の最大数に達しました。");
-                    hitPlayer.sendMessage("§c相撲の最大数に達しました。");
+                    attackingPlayer.sendMessage("§cSumoの最大数に達しました。");
+                    hitPlayer.sendMessage("§cSumoの最大数に達しました。");
                     return;
                 }
+
                 attackingPlayer.addTag(sumoTag);
                 hitPlayer.addTag(sumoTag);
-                this.sumoTagsInUse.push(sumoTag);
+                this.sumoMatches.set(sumoTag, { player1: attackingPlayer, player2: hitPlayer });
 
-                attackingPlayer.sendMessage(`§a${hitPlayer.name} §fとの相撲を開始しました。`);
-                hitPlayer.sendMessage(`§a${attackingPlayer.name} §fがあなたとの相撲を開始しました。`);
-                attackingPlayer.sendMessage(`§b相撲開始§f: §a${attackingPlayer.name} §fvs §a${hitPlayer.name} §f(§6${sumoTag}§f)`);
-                hitPlayer.sendMessage(`§b相撲開始§f: §a${attackingPlayer.name} §fvs §a${hitPlayer.name} §f(§6${sumoTag}§f)`);
+                attackingPlayer.sendMessage(`§a${hitPlayer.name} §fとのSumoを開始しました。`);
+                hitPlayer.sendMessage(`§a${attackingPlayer.name} §fがあなたとのSumoを開始しました。`);
+                attackingPlayer.sendMessage(`§bSumo開始§f: §a${attackingPlayer.name} §fvs §a${hitPlayer.name} §f(§6${sumoTag}§f)`);
+                hitPlayer.sendMessage(`§bSumo開始§f: §a${attackingPlayer.name} §fvs §a${hitPlayer.name} §f(§6${sumoTag}§f)`);
                 return;
             }
 
             if (!attackerTag && hitPlayerTag) {
-                const healthComponent = damagingEntity.getComponent("minecraft:health");
+                const healthComponent = attackingPlayer.getComponent("minecraft:health");
                 if (healthComponent) {
-                    damagingEntity.addEffect("weakness", 1, {
-                        amplifier: 255,
-                        showParticles: false,
-                    });
+                    attackingPlayer.addEffect("weakness", 60, { amplifier: 255, showParticles: false });
                 }
-                attackingPlayer.sendMessage("§c相撲中のプレイヤーを攻撃できません。");
-                return;
-            }
-        }
-    }
-
-    private calculateDistance(pos1: Vector3, pos2: Vector3): number {
-        const dx = pos1.x - pos2.x;
-        const dy = pos1.y - pos2.y;
-        const dz = pos1.z - pos2.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    private checkSumoDistance() {
-        if (this.sumoTagsInUse.length === 0) return; 
-        const sumoPlayers = world.getPlayers().filter(player => this.getSumoTag(player) !== null);
-
-        sumoPlayers.forEach((player) => {
-            const sumoTag = this.getSumoTag(player)!;
-            const opponent = sumoPlayers.find(p => p.hasTag(sumoTag) && p.id !== player.id);
-            if (opponent) {
-                const distance = this.calculateDistance(player.location, opponent.location);
-                if (distance > 15) {
-                    player.sendMessage("§c距離制限を超えたため、相撲は終了しました。");
-                    opponent.sendMessage("§c距離制限を超えたため、相撲は終了しました。");
-                    this.removeSumoTags(player, opponent, sumoTag);
-                }
+                attackingPlayer.sendMessage("§cSumo中のプレイヤーを攻撃できません。");
             }
         });
     }
 
-    // プレイヤーの相撲タグを取得する関数 (最適化)
+    private calculateDistance(pos1: Vector3, pos2: Vector3): number {
+        return Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2 + (pos1.z - pos2.z) ** 2);
+    }
+
+    // 距離制限のチェックとSumoの終了判定
+    private checkSumoDistance() {
+        const sumoTagsToRemove: string[] = [];
+
+        this.sumoMatches.forEach((match, sumoTag) => {
+            const { player1, player2 } = match;
+            const distance = this.calculateDistance(player1.location, player2.location);
+
+            if (distance > 15) {
+                player1.sendMessage("§c距離制限を超えたため、Sumoは終了しました。");
+                player2.sendMessage("§c距離制限を超えたため、Sumoは終了しました。");
+                sumoTagsToRemove.push(sumoTag); // 終了するSumoタグをリストに追加
+            }
+        });
+
+        // 距離制限を超えたSumoをまとめて終了（タグ削除、Map から削除）
+        sumoTagsToRemove.forEach(sumoTag => this.removeSumoMatch(sumoTag, false)); // 勝利判定はしない
+    }
+
+
     private getSumoTag(player: Player): string | null {
-        const sumoTagRegex = /^sumo[1-9]$|^sumo10$/; 
-        return player.getTags().find(tag => sumoTagRegex.test(tag)) ?? null; 
+        const sumoTagRegex = new RegExp(`^${this.sumoTagPrefix}[1-9]$|^${this.sumoTagPrefix}10$`);
+        return player.getTags().find(tag => sumoTagRegex.test(tag)) ?? null;
     }
-
-    private removeSumoTags(player1: Player, player2: Player, sumoTag: string) {
-        player1.removeTag(sumoTag);
-        player2.removeTag(sumoTag);
-        const index = this.sumoTagsInUse.indexOf(sumoTag);
-        if (index > -1) {
-            this.sumoTagsInUse.splice(index, 1);
-        }
-        this.checkSystemStatus();
-    }
-
 
     private generateUniqueSumoTag(): string | null {
         for (let i = 1; i <= this.maxSumoMatches; i++) {
             const tag = `${this.sumoTagPrefix}${i}`;
-            if (!this.sumoTagsInUse.includes(tag)) {
-                return tag; 
+            if (!this.sumoMatches.has(tag)) {
+                return tag;
             }
         }
         return null;
     }
 
-    // 勝敗判定と結果の処理
-    private determineWinner(player: Player) {
-        const sumoTag = this.getSumoTag(player);
-        if (sumoTag) {
-            world.getPlayers().forEach(p => {
-                if (p.hasTag(sumoTag)) {
-                    p.removeTag(sumoTag);
-                }
-            });
+    private determineWinner(winner: Player, sumoTag: string) {
+        const match = this.sumoMatches.get(sumoTag);
+        if (!match) return;
 
-            const index = this.sumoTagsInUse.indexOf(sumoTag);
-            if (index > -1) {
-                this.sumoTagsInUse.splice(index, 1);
-            }
-            player.addTag("w:sumo_win");
-            player.sendMessage("§l§f>> §bSumo §aWin §f<<");
-            this.checkSystemStatus(); 
-        }
-    }
+        const loser = match.player1.id === winner.id ? match.player2 : match.player1;
+        this.removeSumoMatch(sumoTag); // 勝利メッセージあり
 
-    private checkSystemStatus() {
-        this.sumoSystemEnabled = world.getPlayers().some(player => player.hasTag(this.trueSumoTag));
+        world.getPlayers({ tags: [this.announcementTag] }).forEach(player => {
+            player.sendMessage(`§b[Sumo]§a ${winner.name} §fが §c${loser.name} §fに勝利しました! (${sumoTag})`);
+        });
     }
 
 
+    //removeSumoMatch(sumoTag: string, announceWinner: boolean = true) {
+    private removeSumoMatch(sumoTag: string, _announceWinner: boolean = true) {
+        const match = this.sumoMatches.get(sumoTag);
+        if (!match) return;
+
+        match.player1.removeTag(sumoTag);
+        match.player2.removeTag(sumoTag);
+        this.sumoMatches.delete(sumoTag);
+
+    }
 
     registerCommands(handler: Handler): void {
         handler.registerCommand("sumo", {
             moduleName: this.name,
-            description: "相撲システムを制御します。",
-            usage: "/sumo [enable|disable|pvp|true]",
+            description: "Sumoシステムを制御します。",
+            usage: "/sumo [enable|disable|pvp|announce]",
             execute: (message, event) => {
                 if (!(event.sourceEntity instanceof Player)) return;
                 const player = event.sourceEntity;
 
                 const args = message.split(/\s+/);
                 if (args.length < 2) {
-                    player.sendMessage("§e使用方法: §f/sumo [enable|disable|pvp|true]");
+                    player.sendMessage("§e使用方法: §f/sumo [enable|disable|pvp|announce]");
                     return;
                 }
 
-                switch (args[1].toLowerCase()) { 
-                    case "enable": 
-                        this.sumoSystemEnabled = true;
-                        player.sendMessage("§a相撲システムを有効にしました。");
+                switch (args[1].toLowerCase()) {
+                    case "enable":
+                        this.config.module.sumoSystem.enabled = true;
+                        player.sendMessage("§aSumoシステムを有効にしました。");
                         break;
-                    case "disable": 
-                        this.sumoSystemEnabled = false;
-                        this.sumoTagsInUse = []; 
+                    case "disable":
+                        this.config.module.sumoSystem.enabled = false;
+                        this.sumoMatches.clear();
                         world.getPlayers().forEach(p => {
                             p.getTags().forEach(tag => {
                                 if (tag.startsWith("sumo")) {
@@ -236,36 +198,34 @@ class SumoModule implements Module {
                                 }
                             });
                         });
-                        player.sendMessage("§c相撲システムを無効にしました。");
+                        player.sendMessage("§cSumoシステムを無効にしました。");
                         break;
                     case "pvp":
                         if (player.hasTag(this.pvpSumoTag)) {
                             player.removeTag(this.pvpSumoTag);
-                            player.sendMessage("§cPvP 相撲モードを無効にしました。");
+                            player.sendMessage("§cPvP Sumoモードを無効にしました。");
                         } else {
                             player.addTag(this.pvpSumoTag);
-                            player.sendMessage("§aPvP 相撲モードを有効にしました。");
+                            player.sendMessage("§aPvP Sumoモードを有効にしました。");
                         }
                         break;
-                    case "true": 
-                        if (player.hasTag(this.trueSumoTag)) {
-                            player.removeTag(this.trueSumoTag);
-                            player.sendMessage("§c強制 PvP 相撲モードを無効にしました。");
-                            this.checkSystemStatus(); 
+                    case "announce":
+                        if (player.hasTag(this.announcementTag)) {
+                            player.removeTag(this.announcementTag);
+                            player.sendMessage("§cSumoの勝利メッセージは表示されなくなります。");
                         } else {
-                            player.addTag(this.trueSumoTag);
-                            player.sendMessage("§a強制 PvP 相撲モードを有効にしました。");
-                            this.checkSystemStatus(); 
+                            player.addTag(this.announcementTag);
+                            player.sendMessage("§aSumoの勝利メッセージが表示されるようになります。");
                         }
                         break;
+
                     default:
-                        player.sendMessage("§e使用方法: §f/sumo [enable|disable|pvp|true]"); // 不明な引数
+                        player.sendMessage("§e使用方法: §f/sumo [enable|disable|pvp|announce]");
                 }
             }
         });
     }
 }
 
-// モジュールを登録
 const sumoModule = new SumoModule();
 moduleManager.registerModule(sumoModule);

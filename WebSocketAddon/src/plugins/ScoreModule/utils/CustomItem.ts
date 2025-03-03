@@ -7,20 +7,37 @@ import {
     ItemUseBeforeEvent,
     PlayerPlaceBlockBeforeEvent,
     ItemLockMode,
-    system
+    Entity,
+    Block,
+    EntityHitEntityAfterEvent,
+    EntityHitBlockAfterEvent,
 } from '@minecraft/server';
+
+// Enum for event types
+export enum EventType {
+    ItemUse,
+    EntityHit,
+    BlockHit,
+}
+
+// Interface for the event data passed to the callback
+interface CustomItemEventData {
+    itemStack: ItemStack;
+    hitResult?: { entity?: Entity; block?: Block };
+    eventType: EventType;
+}
 
 interface CustomItemOptions {
     name: string;
     lore: string[];
     item: string;
     amount?: number;
-    keepOnClose?: boolean;
-    rollback?: boolean;
-    placeableOn?: string[];  // 配置可能なブロックのリスト
-    notPlaceableOn?: string[]; // 配置不可能なブロックのリスト
+    keepOnClose?: boolean; //Deprecated
+    rollback?: boolean; //Deprecated
+    placeableOn?: string[];
+    notPlaceableOn?: string[];
     itemLock?: ItemLockMode;
-    remove?: boolean; // アイテム使用時に削除するかどうか
+    remove?: boolean;
 }
 
 interface CustomItem {
@@ -28,13 +45,13 @@ interface CustomItem {
     lore: string[];
     item: string;
     amount: number;
-    keepOnClose: boolean;
-    rollback: boolean;
+    keepOnClose: boolean; //Deprecated
+    rollback: boolean;     //Deprecated
     placeableOn: string[] | undefined;
     notPlaceableOn: string[] | undefined;
     itemLock: ItemLockMode;
     remove: boolean;
-    then(callback: (player: Player, itemStack: ItemStack) => void): CustomItem;
+    then(callback: (player: Player, eventData: CustomItemEventData) => void): CustomItem; // Updated callback signature
     get(): ItemStack;
     give(player: Player, amount?: number): void;
     removeItem(player: Player, itemStack: ItemStack): void;
@@ -51,7 +68,7 @@ class CustomItemImpl implements CustomItem {
     public notPlaceableOn: string[] | undefined;
     public itemLock: ItemLockMode;
     public remove: boolean;
-    private callback?: (player: Player, itemStack: ItemStack) => void;
+    private callback?: (player: Player, eventData: CustomItemEventData) => void; // Updated callback type
 
     constructor(options: CustomItemOptions) {
         this.name = options.name;
@@ -72,14 +89,23 @@ class CustomItemImpl implements CustomItem {
         world.beforeEvents.playerPlaceBlock.subscribe((event: PlayerPlaceBlockBeforeEvent) => {
             this.handleBlockPlacement(event);
         });
+
+        world.afterEvents.entityHitEntity.subscribe((event: EntityHitEntityAfterEvent) => {
+            this.handleEntityHit(event);
+        });
+
+        world.afterEvents.entityHitBlock.subscribe((event: EntityHitBlockAfterEvent) => {
+            this.handleBlockHit(event);
+        });
     }
 
-    then(callback: (player: Player, itemStack: ItemStack) => void): CustomItem {
+    then(callback: (player: Player, eventData: CustomItemEventData) => void): CustomItem {
         this.callback = callback;
         return this;
     }
 
     get(): ItemStack {
+        // ... (get method remains the same) ...
         const itemType = ItemTypes.get(this.item);
         if (!itemType) {
             throw new Error(`Invalid item type: ${this.item}`);
@@ -92,13 +118,13 @@ class CustomItemImpl implements CustomItem {
     }
 
     give(player: Player, amount?: number): void {
+        // ... (give method remains the same) ...
         const inventory = player.getComponent('inventory') as EntityInventoryComponent;
         if (inventory) {
-            const giveAmount = amount ?? this.amount; // amountが指定されていなければ、デフォルトのamountを使用
+            const giveAmount = amount ?? this.amount;
             const itemStack = this.get();
-            itemStack.amount = giveAmount; // 付与する個数を設定
+            itemStack.amount = giveAmount;
 
-            // スタック可能なアイテムの場合、空きスロットを探して追加、または新しいスロットに追加
             if (itemStack.maxAmount > 1) {
                 let remainingAmount = giveAmount;
                 if (!inventory?.container) return;
@@ -121,7 +147,6 @@ class CustomItemImpl implements CustomItem {
                     }
                 }
             } else {
-                // スタック不可のアイテムの場合、指定された個数分繰り返して追加
                 for (let i = 0; i < giveAmount; i++) {
                     inventory?.container?.addItem(itemStack.clone());
                 }
@@ -130,64 +155,106 @@ class CustomItemImpl implements CustomItem {
     }
 
     private handleItemUse(event: ItemUseBeforeEvent): void {
-        const player = event.source;
+        const player = event.source as Player;
         const usedItemStack = event.itemStack;
 
         if (usedItemStack.typeId === this.item && usedItemStack.nameTag === this.name) {
-            if (this.callback) {
-                event.cancel = true;
-                this.callback(player, usedItemStack);
+            event.cancel = true;
 
-                if (this.remove) {
-                    this.removeItem(player, usedItemStack);
-                }
+            if (this.callback) {
+                const eventData: CustomItemEventData = {
+                    itemStack: usedItemStack,
+                    eventType: EventType.ItemUse, // No hit, so it's a simple ItemUse
+                };
+                this.callback(player, eventData);
+            }
+        }
+    }
+    private handleEntityHit(event: EntityHitEntityAfterEvent): void {
+        const player = event.damagingEntity as Player;
+        if (!player) return;
+
+        const inventory = player.getComponent('inventory') as EntityInventoryComponent;
+        if (!inventory || !inventory.container) return;
+
+        const heldItemStack = inventory.container.getItem(player.selectedSlotIndex);
+        if (!heldItemStack || heldItemStack.typeId !== this.item || heldItemStack.nameTag !== this.name) return;
+
+
+        if (this.callback) {
+            const eventData: CustomItemEventData = {
+                itemStack: heldItemStack,
+                hitResult: { entity: event.hitEntity },
+                eventType: EventType.EntityHit,
+            };
+            this.callback(player, eventData);
+
+            if (this.remove) {
+                this.removeItem(player, heldItemStack);
+            }
+        }
+
+    }
+
+    private handleBlockHit(event: EntityHitBlockAfterEvent): void {
+        const player = event.damagingEntity as Player;
+        if (!player) return;
+
+        const inventory = player.getComponent('inventory') as EntityInventoryComponent;
+        if (!inventory || !inventory.container) return;
+
+        const heldItemStack = inventory.container.getItem(player.selectedSlotIndex);
+        if (!heldItemStack || heldItemStack.typeId !== this.item || heldItemStack.nameTag !== this.name) return;
+
+        if (this.callback) {
+            const eventData: CustomItemEventData = {
+                itemStack: heldItemStack,
+                hitResult: { block: event.hitBlock },
+                eventType: EventType.BlockHit,
+            };
+            this.callback(player, eventData);
+
+            if (this.remove) {
+                this.removeItem(player, heldItemStack);
             }
         }
     }
 
     private handleBlockPlacement(event: PlayerPlaceBlockBeforeEvent): void {
+        // ... (handleBlockPlacement method remains the same) ...
         const player = event.player;
         const block = event.block;
         const itemStack = player.getComponent('inventory')?.container?.getItem(player.selectedSlotIndex);
 
         if (!itemStack || itemStack.typeId !== this.item || itemStack.nameTag !== this.name) return;
 
-        // ブロックの配置可否をチェック
         if (this.placeableOn && !this.placeableOn.includes(block.typeId)) {
-            event.cancel = true; // 配置不可
+            event.cancel = true;
             player.sendMessage("そこには配置できません。(placeableOn)");
         }
-        if (this.notPlaceableOn && this.notPlaceableOn.includes(block.typeId)) {
-            event.cancel = true; // 配置不可
+        if (this.notPlaceableOn && !this.notPlaceableOn.includes(block.typeId)) {
+            event.cancel = true;
             player.sendMessage("そこには配置できません。(notPlaceableOn)");
         }
     }
-
     public removeItem(player: Player, usedItemStack: ItemStack): void {
+        // ... (removeItem method remains the same) ...
         const inventory = player.getComponent("inventory") as EntityInventoryComponent;
         if (!inventory || !inventory.container) return;
 
-        system.run(() => {
-            if (inventory.container) {
-                for (let i = 0; i < inventory.container.size; i++) {
-                    const currentItem = inventory.container.getItem(i);
+        for (let i = 0; i < inventory.container.size; i++) {
+            const currentItem = inventory.container.getItem(i);
 
-                    if (currentItem && currentItem.typeId === usedItemStack.typeId && currentItem.nameTag === usedItemStack.nameTag) {
-                        if (currentItem.amount <= 1) {
-                            system.run(() => {
-                                inventory.container?.setItem(i, undefined);
-                            });
-                        } else {
-                            system.run(() => {
-                                currentItem.amount -= 1;
-                                inventory.container?.setItem(i, currentItem);
-                            });
-                        }
-                        return;
-                    }
+            if (currentItem && currentItem.typeId === usedItemStack.typeId && currentItem.nameTag === usedItemStack.nameTag) {
+                if (currentItem.amount <= 1) {
+                    inventory.container.setItem(i, undefined);
+                } else {
+                    currentItem.amount -= 1;
+                    inventory.container.setItem(i, currentItem);
                 }
+                return;
             }
-        });
+        }
     }
 }
 

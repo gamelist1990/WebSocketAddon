@@ -155,10 +155,10 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                     y: minY,
                     z: minZ,
                     blocksPerTick: 10,  // 1 Tick あたりのブロック処理数（列処理中の分割にも使用）
-                    blocksPerColumn: 50, // 1列あたりの最大処理ブロック数 (これを超えたら列処理を分割)
+                    blocksPerColumn: 10, // 1列あたりの最大処理ブロック数 (これを超えたら列処理を分割)
                     blockCount: 0,       // 現在の Tick/列 で処理したブロック数
                     columnBlockCount: 0, //現在の列で処理したブロック
-                    delayTick: 0,        // 遅延 Tick
+                    delayTick: 10,        // 遅延 Tick
                 };
 
                 const processNextBatch = () => {

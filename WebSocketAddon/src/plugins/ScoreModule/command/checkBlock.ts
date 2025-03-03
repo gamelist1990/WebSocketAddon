@@ -1,18 +1,5 @@
-import { Player, system, world, Dimension } from "@minecraft/server";
+import { Player, system, world } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
-
-
-// executeCommand 関数を外に出す
-function executeCommand(commandTemplate: string, x: number, y: number, z: number, dimension: Dimension) {
-    let command = commandTemplate.replaceAll("{x}", x.toString())
-        .replaceAll("{y}", y.toString())
-        .replaceAll("{z}", z.toString());
-
-    dimension.runCommandAsync(command).catch(error => {
-        console.warn(`コマンド実行中にエラー（非同期）: ${error} \n ${command}`);
-    });
-}
-
 
 export function registerCheckBlockCommand(handler: Handler, moduleName: string) {
     handler.registerCommand('checkBlock', {
@@ -21,12 +8,16 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
         usage:
             'checkBlock <JSON>\n  <JSON>: {"start":{"x":0,"y":64,"z":0},"end":{"x":10,"y":70,"z":10},"checkBlocks":["minecraft:dirt","minecraft:stone"],"runCommand":"say Found block at {x} {y} {z}"}',
         execute: (_message, event) => {
+            const consoleOutput = (message: string) => {
+                console.warn(message);
+            };
 
             const sendMessage = (message: string) => {
                 if (event.sourceEntity instanceof Player) {
-                    system.run(() => (event.sourceEntity as Player).sendMessage(message));
+                    const player = event.sourceEntity;
+                    system.run(() => player.sendMessage(message));
                 } else {
-                    console.warn(message);
+                    consoleOutput(message);
                 }
             };
 
@@ -38,14 +29,7 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 }
 
                 const checkDataStr = matchResult[0];
-                let checkData;
-                try {
-                    checkData = JSON.parse(checkDataStr);
-                } catch (parseError) {
-                    sendMessage(`JSON解析エラー: 無効なJSON形式です。 ${parseError}`); // より詳細なエラーメッセージ
-                    return;
-                }
-
+                const checkData = JSON.parse(checkDataStr);
 
                 if (!checkData.start || !checkData.end || !checkData.checkBlocks || !checkData.runCommand) {
                     sendMessage('JSONオブジェクトは "start", "end", "checkBlocks", "runCommand" を含む必要があります。');
@@ -62,14 +46,21 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                     sendMessage('"checkBlocks" は配列である必要があります。');
                     return;
                 }
+
                 if (checkData.checkBlocks.length === 0) {
                     sendMessage('"checkBlocks" は空にできません');
                     return;
                 }
 
 
+                if (typeof checkData.runCommand !== 'string') {
+                    sendMessage('"runCommand" は文字列である必要があります。');
+                    return;
+                }
+
                 const dimension = event.sourceEntity?.dimension ?? world.getDimension('overworld');
 
+                // 座標の順序を保証
                 const start = {
                     x: Math.min(checkData.start.x, checkData.end.x),
                     y: Math.min(checkData.start.y, checkData.end.y),
@@ -81,53 +72,63 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                     z: Math.max(checkData.start.z, checkData.end.z),
                 };
 
-                let currentX = start.x;
-                let currentY = start.y;
-                let currentZ = start.z;
-                const CHUNK_SIZE = 1;
+                // 1tickあたりの処理上限
+                const maxBlocksPerTick = 500; // 1tickあたりに処理するブロック数の上限
+                let currentBlockIndex = 0;  // 現在処理中のブロックのインデックス
 
-                const intervalId = system.runInterval(() => {
-                    const endX = Math.min(currentX + CHUNK_SIZE - 1, end.x);
-                    const endY = Math.min(currentY + CHUNK_SIZE - 1, end.y);
-                    const endZ = Math.min(currentZ + CHUNK_SIZE - 1, end.z);
+                const volume = (end.x - start.x + 1) * (end.y - start.y + 1) * (end.z - start.z + 1);
+                const totalBlocks = volume;  // 処理するブロックの総数
+
+                const processBlocks = () => {
+                    let blocksProcessedThisTick = 0; // このtickで処理したブロック数
+                    for (let i = currentBlockIndex; i < totalBlocks; i++) {
+                        // 3次元座標を1次元インデックスから逆算
+                        const x = start.x + Math.floor(i % (end.x - start.x + 1));
+                        const y = start.y + Math.floor((i / (end.x - start.x + 1)) % (end.y - start.y + 1));
+                        const z = start.z + Math.floor(i / ((end.x - start.x + 1) * (end.y - start.y + 1)));
+
+                        const block = dimension.getBlock({ x, y, z });
+                        const typeId = block?.typeId ?? "minecraft:air";
 
 
-                    for (let x = currentX; x <= endX; x++) {
-                        for (let y = currentY; y <= endY; y++) {
-                            for (let z = currentZ; z <= endZ; z++) {
-                                const block = dimension.getBlock({ x, y, z });
-                                if (block) { 
-                                    const typeId = block.typeId;
+                        if (checkData.checkBlocks.includes(typeId)) {
+                            executeCommand(checkData.runCommand, x, y, z, dimension);
+                        }
 
-                                    if (checkData.checkBlocks.includes(typeId)) {
-                                        executeCommand(checkData.runCommand, x, y, z, dimension);
-                                    }
-                                }
-                            }
+
+                        blocksProcessedThisTick++;
+                        currentBlockIndex++;
+
+                        // 1tickあたりの処理上限に達したら次のtickへ
+                        if (blocksProcessedThisTick >= maxBlocksPerTick) {
+                            system.run(processBlocks);
+                            return; // このtickでの処理を終了
                         }
                     }
-
-                    // 次の範囲に進む
-                    currentZ += CHUNK_SIZE;
-                    if (currentZ > end.z) {
-                        currentZ = start.z;
-                        currentY += CHUNK_SIZE;
-                        if (currentY > end.y) {
-                            currentY = start.y;
-                            currentX += CHUNK_SIZE;
-                        }
-                    }
-
-                    // 処理が完了したらintervalをクリア
-                    if (currentX > end.x) {
-                        system.clearRun(intervalId);
-                    }
-                }, 1); // 1ティックごとに実行 (必要に応じて調整)
+                };
 
 
-            } catch (error: any) {
-                console.warn(`処理中にエラーが発生しました: ${error}`); // any型を追加
-                sendMessage(`エラーが発生しました: ${error.message}`);
+                // 初回の呼び出し
+                system.run(processBlocks);
+
+            } catch (error) {
+                consoleOutput(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);
+                sendMessage(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);
+            }
+
+            function executeCommand(commandTemplate: string, x: number, y: number, z: number, dimension: any) {
+                let command = commandTemplate;
+
+                command = command.replaceAll("{x}", x.toString());
+                command = command.replaceAll("{y}", y.toString());
+                command = command.replaceAll("{z}", z.toString());
+
+                try {
+                    dimension.runCommandAsync(command);
+                } catch (error) {
+                    consoleOutput(`コマンド実行中にエラー（非同期）: ${error} \n ${command}`);
+                    sendMessage(`コマンド実行中にエラー（非同期）: ${error}`);
+                }
             }
         },
     });
