@@ -4,15 +4,16 @@ import {
     PlayerSoundOptions,
     VectorXZ,
 } from "@minecraft/server";
-import { CustomItem } from "../../../../utils/CustomItem";
+import { CustomItem, EventType } from "../../../../utils/CustomItem";
 import { registerCustomItem } from "../../custom";
 
 const upBlowWoodenSword = new CustomItem({
     name: "§6アッパーソード",
     lore: ["§7使用すると上方向に吹き飛ばされる"],
     item: "minecraft:wooden_sword",
-}).then((player: Player) => {
+}).then((player: Player,eventData) => {
     system.run(() => {
+        if (eventData.eventType !== EventType.ItemUse) return;
         const playerLocation = player.location;
 
         if (playerLocation.y <= -40) {

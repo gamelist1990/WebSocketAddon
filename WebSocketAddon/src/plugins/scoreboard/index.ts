@@ -40,7 +40,7 @@ class GameDataModule implements Module {
     this.healthDb = Database.create('ws_db_hp');
     this.speedDb = Database.create('ws_db_speed');
     this.tpsDb = Database.create('ws_db_tps');
-    this.lagDb = Database.create('ws_db_lag'); // ラグデータ用の Database を作成
+    this.lagDb = Database.create('ws_db_lag');
   }
 
   onEnable(): void {

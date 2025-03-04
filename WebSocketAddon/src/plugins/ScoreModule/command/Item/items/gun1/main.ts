@@ -233,10 +233,10 @@ class Pistol extends BaseGun {
     use(player: Player) {
         const playerName = player.name;
 
-        if (this.reloadingPlayers.has(playerName)) { 
+        if (this.reloadingPlayers.has(playerName)) {
             return;
         }
-        if (this.checkCooldown(player)) { 
+        if (this.checkCooldown(player)) {
             return;
         }
 
@@ -253,10 +253,10 @@ class Pistol extends BaseGun {
         this.updateActionBar(player);
 
         system.run(() => {
-            this.playSound(player, "fire.ignite", { pitch: 1.9, volume: 0.7 }, true); 
+            this.playSound(player, "fire.ignite", { pitch: 1.9, volume: 0.7 }, true);
             this.playSound(player, "ambient.weather.rain", { pitch: 2.2, volume: 0.3 }, true);
             system.runTimeout(() => {
-                this.playSound(player, "random.pop", { pitch: 1.5, volume: 0.3 }, true); 
+                this.playSound(player, "random.pop", { pitch: 1.5, volume: 0.3 }, true);
             }, 2)
 
 
@@ -387,6 +387,78 @@ class SniperRifle extends BaseGun {
     }
 }
 
+// --- AK クラス (新規追加) ---
+class AK extends BaseGun {
+    private burstIntervalTicks = 2; // バースト間隔を少し長く
+
+    constructor() {
+        const akLore = [
+            "§7----- AK Status -----",
+            "",
+            "  Damage      |  §c" + 2 + " - " + 5,
+            "  Range       |  §a" + 30,  // 射程を少し延長
+            "  Ammo        |  §b" + 50,
+            "  Burst       |  §65",       // バースト数を増加
+            "",
+            "  Fire        |  右クリ/RightClick",
+            "  Reload      |  攻撃/Attack(§eXP§r)",
+            "",
+            "§7----- " + (70 / 20) + "s Reload / " + 2 + "tick Burst -----", // リロード時間を少し調整
+        ];
+        super("§6AK", akLore, "minecraft:diamond_hoe", 50, 10, 3, 30, 0, 70, "minecraft:villager_happy", 2); // パーティクルと弾速を調整
+    }
+
+    use(player: Player) {
+        const playerName = player.name;
+
+        if (this.reloadingPlayers.has(playerName)) {
+            return;
+        }
+        if (this.checkCooldown(player)) {
+            return;
+        }
+
+        let currentAmmo = this.ammo.get(playerName) ?? this.maxAmmo;
+
+        if (currentAmmo <= 0) {
+            this.showReloadPrompt(player);
+            return;
+        }
+
+        const fireBurst = (shotCount: number) => {
+            system.run(() => {
+                if (shotCount <= 0) {
+                    this.cooldowns.set(playerName, system.currentTick + this.cooldownTicks);
+                    return;
+                }
+
+                if (currentAmmo <= 0) {
+                    this.showReloadPrompt(player);
+                    return;
+                }
+
+                this.ammo.set(playerName, --currentAmmo);
+                this.updateActionBar(player);
+
+                // AK 用のより特徴的な射撃音
+                this.playSound(player, "fire.ignite", { pitch: 1.3, volume: 0.6 }, true); // 発砲音を調整
+                this.playSound(player, "cauldron.explode", { pitch: 1.0, volume: 0.3 }, true); // 爆発音で重厚感を出す
+                system.runTimeout(() => {
+                    this.playSound(player, "random.pop", { pitch: 1.6, volume: 0.2 }, true); // 薬莢の音を調整
+                }, 1);
+
+                this.fireProjectile(player,
+                    (hitEntity, damage) => { hitEntity.applyDamage(damage, { damagingEntity: player, cause: EntityDamageCause.entityAttack }); }
+                );
+
+                system.runTimeout(() => { fireBurst(shotCount - 1); }, this.burstIntervalTicks);
+            });
+        };
+        const burstCount = 3;
+        fireBurst(burstCount);
+    }
+}
+
 function distance(pos1: Vector3, pos2: Vector3): number {
     return Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2 + (pos1.z - pos2.z) ** 2);
 }
@@ -395,6 +467,9 @@ function distance(pos1: Vector3, pos2: Vector3): number {
 const pistol = new Pistol();
 const assaultRifle = new AssaultRifle();
 const sniperRifle = new SniperRifle();
+const ak = new AK(); // AK のインスタンスを生成
+
 registerCustomItem(3, assaultRifle.customItem);
 registerCustomItem(4, pistol.customItem);
 registerCustomItem(5, sniperRifle.customItem);
+registerCustomItem(6, ak.customItem); // AK を登録 (スロット 6 に設定)

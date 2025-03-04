@@ -1,5 +1,5 @@
 import { Player, system, EffectTypes, PlayerSoundOptions, VectorXZ } from "@minecraft/server";
-import { CustomItem } from "../../../../utils/CustomItem";
+import { CustomItem, EventType } from "../../../../utils/CustomItem";
 import { registerCustomItem } from "../../custom";
 
 // --- アイテム定義 ---
@@ -9,9 +9,9 @@ const boostFeather = new CustomItem({
     item: "minecraft:feather",
     amount: 1,
     remove: true,
-}).then((player: Player) => {
-
+}).then((player: Player, eventData) => {
     system.run(() => {
+        if (eventData.eventType !== EventType.ItemUse) return;
         const direction = player.getViewDirection();
         const horizontalForce: VectorXZ = { x: direction.x * 4, z: direction.z * 4 }
         //@ts-ignore
@@ -57,4 +57,4 @@ const boostFeather = new CustomItem({
     })
 });
 
-registerCustomItem(1,boostFeather)
+registerCustomItem(1, boostFeather)

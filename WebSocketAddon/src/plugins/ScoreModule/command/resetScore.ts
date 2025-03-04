@@ -40,4 +40,35 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
             }
         },
     });
+
+    handler.registerCommand('resetTag', {
+        moduleName: moduleName,
+        description: '実行したプレイヤーのタグを全て削除します。',
+        usage: 'resetTag',
+        execute: (_message, event) => {
+            const sendMessage = (message: string) => {
+                if (event.sourceEntity instanceof Player) {
+                    const player = event.sourceEntity;
+                    system.run(() => player.sendMessage(message));
+                }
+            };
+
+            if (event.sourceEntity instanceof Player) {
+                const player = event.sourceEntity;
+                const tags = player.getTags();
+                if (tags.length === 0) {
+                    sendMessage(`§cタグがありません`);
+                    return;
+                }
+                system.run(() => {
+                    for (const tag of tags) {
+                        player.removeTag(tag);
+                    }
+                    sendMessage('タグを全て削除しました。');
+                });
+            } else {
+                sendMessage('このコマンドはプレイヤーのみ実行できます。');
+            }
+        },
+    });
 }

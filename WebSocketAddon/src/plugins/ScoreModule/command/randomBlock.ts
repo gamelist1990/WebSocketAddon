@@ -99,7 +99,7 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                     }
                     sendMessage(`Error in getRandomBlock: No block found for random value ${random}. Total weight: ${totalWeight}`);
                     console.warn(`Error in getRandomBlock: No block found for random value ${random}. Total weight: ${totalWeight}`);
-                    return randomBlockData.blocks[0].id; //フォールバック
+                    return randomBlockData.blocks[0].id; 
                 };
 
                 const startCoords = randomBlockData.start.split(" ").map(Number);
@@ -109,8 +109,8 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                     sendMessage(`無効な座標形式です: start: ${randomBlockData.start}, end: ${randomBlockData.end}`);
                     return;
                 }
-                const start: Vector3 = { x: startCoords[0], y: startCoords[1], z: startCoords[2] };
-                const end: Vector3 = { x: endCoords[0], y: endCoords[1], z: endCoords[2] };
+                const start = { x: startCoords[0], y: startCoords[1], z: startCoords[2] };
+                const end = { x: endCoords[0], y: endCoords[1], z: endCoords[2] };
 
                 const minX = Math.min(start.x, end.x);
                 const minY = Math.min(start.y, end.y);
@@ -119,122 +119,71 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                 const maxY = Math.max(start.y, end.y);
                 const maxZ = Math.max(start.z, end.z);
 
-
-
-                // replaceBlock の最適化 (Set を使用)
                 const replaceBlockSet = randomBlockData.replaceBlock ? new Set(randomBlockData.replaceBlock) : null;
 
-                // totalBlocks を計算 (replaceBlock が指定されている場合は、該当するブロックのみをカウント)
-                let totalBlocks = 0;
-                if (replaceBlockSet) {
-                    // replaceBlockSet がある場合、最初に総数を計算
-                    const calculateTotalBlocks = () => {
-                        let count = 0;
-                        for (let x = minX; x <= maxX; x++) {
-                            for (let y = minY; y <= maxY; y++) {
-                                for (let z = minZ; z <= maxZ; z++) {
-                                    const block = dimension.getBlock({ x, y, z });
-                                    if (block && replaceBlockSet.has(block.typeId)) {
-                                        count++;
-                                    }
-                                }
-                            }
-                        }
-                        return count;
-                    }
-                    totalBlocks = calculateTotalBlocks();
-                } else {
-                    // replaceBlockSet がない場合、すべてのブロックをカウント
-                    totalBlocks = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-                }
-                let processedBlocks = 0;
+                const maxBlocksPerTick = 500;
+                let currentBlockIndex = 0;  
 
-                // 状態を保持するオブジェクト
-                const state = {
-                    x: minX,
-                    y: minY,
-                    z: minZ,
-                    blocksPerTick: 10,  // 1 Tick あたりのブロック処理数（列処理中の分割にも使用）
-                    blocksPerColumn: 10, // 1列あたりの最大処理ブロック数 (これを超えたら列処理を分割)
-                    blockCount: 0,       // 現在の Tick/列 で処理したブロック数
-                    columnBlockCount: 0, //現在の列で処理したブロック
-                    delayTick: 10,        // 遅延 Tick
-                };
+                const volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
+                let totalBlocks = volume;  
+                let processedBlocks = 0; 
 
-                const processNextBatch = () => {
-                    if (state.delayTick > 0) {
-                        state.delayTick--;
-                        system.run(processNextBatch);
-                        return;
-                    }
+                const processBlocks = () => {
+                    let blocksProcessedThisTick = 0; 
 
-                    state.blockCount = 0;      // Tick ごとのカウンターをリセット
-                    state.columnBlockCount = 0; // 列ごとのカウンターをリセット
+                    for (let i = currentBlockIndex; i < totalBlocks; i++) {
+                        // 3次元座標を1次元インデックスから逆算(Gemini君が書いてくれたyo)
+                        const x = minX + Math.floor(i % (maxX - minX + 1));
+                        const y = minY + Math.floor((i / (maxX - minX + 1)) % (maxY - minY + 1));
+                        const z = minZ + Math.floor(i / ((maxX - minX + 1) * (maxY - minY + 1)));
 
-                    // 現在の列を処理（分割処理対応）
-                    for (let y = state.y; y <= maxY; y++) {
-                        for (let z = state.z; z <= maxZ; z++) {
-                            if (state.blockCount >= state.blocksPerTick || state.columnBlockCount >= state.blocksPerColumn) {
-                                // blocksPerTick または blocksPerColumn に達したら次の Tick/列 へ
-                                system.run(processNextBatch);
-                                return;
-                            }
 
-                            const blockLoc: Vector3 = { x: state.x, y: y, z: z };
-                            try {
-                                const randomBlockId = getRandomBlock();
-                                const block = dimension.getBlock(blockLoc);
+                        const blockLoc: Vector3 = { x, y, z };
 
-                                if (block) {
-                                    if (replaceBlockSet) {
-                                        if (replaceBlockSet.has(block.typeId)) {
-                                            block.setType(randomBlockId);
-                                            state.blockCount++;
-                                            state.columnBlockCount++;
-                                            processedBlocks++;
-                                        }
-                                    } else {
-                                        block.setType(randomBlockId);
-                                        state.blockCount++;
-                                        state.columnBlockCount++;
-                                        processedBlocks++;
-                                    }
+                        try {
+
+                            const block = dimension.getBlock(blockLoc);
+
+                            if (block) {
+                                if (!replaceBlockSet || replaceBlockSet.has(block.typeId)) {
+                                    const randomBlockId = getRandomBlock();
+                                    block.setType(randomBlockId);
+                                    processedBlocks++;
                                 }
 
-                            } catch (error: any) {
-                                consoleOutput(`ブロック設置エラー at ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z}: ${error.message ?? error}`);
-                                sendMessage(`ブロック設置エラー at ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z}: ${error.message ?? error}`);
-                                return; // エラーが発生したら処理を中断
                             }
+
+
+
+                        } catch (error: any) {
+                            consoleOutput(`ブロック設置エラー at ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z}: ${error.message ?? error}`);
+                            sendMessage(`ブロック設置エラー at ${blockLoc.x}, ${blockLoc.y}, ${blockLoc.z}: ${error.message ?? error}`);
+                            return;
                         }
-                    }
 
 
-                    state.x++; // 次の列へ
+                        blocksProcessedThisTick++;
+                        currentBlockIndex++;
 
-                    if (state.x > maxX) {
-                        // 全ての列を処理し終えたら終了
-                        if (debugMode) {
-                            sendMessage('ランダムブロック配置が完了しました。', true);
+                    
+                        if (blocksProcessedThisTick >= maxBlocksPerTick) {
+                            system.run(processBlocks);
+                            if (debugMode) {
+                                const progressPercentage = ((processedBlocks / totalBlocks) * 100).toFixed(2);
+                                sendActionBarMessage(`Progress: ${progressPercentage}% (${processedBlocks}/${totalBlocks})`);
+                            }
+                            return; 
                         }
-                        return;
+
                     }
-
-                    // 列の処理が終わったので y と z をリセット
-                    state.y = minY;
-                    state.z = minZ;
-
                     if (debugMode) {
-                        const progressPercentage = ((processedBlocks / totalBlocks) * 100).toFixed(2);
-                        sendActionBarMessage(`Progress: ${progressPercentage}% (${processedBlocks}/${totalBlocks})`);
+                        sendMessage('ランダムブロック配置が完了しました。', true);
                     }
 
-                    state.delayTick = 0; // 遅延時間を設定（0 で最速）
-                    system.run(processNextBatch); // 次の列の処理を開始
                 };
+                system.run(processBlocks);
 
-                // 初回の処理を開始
-                system.run(processNextBatch);
+
 
             } catch (error) {
                 consoleOutput(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);

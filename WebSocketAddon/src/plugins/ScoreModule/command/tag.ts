@@ -8,7 +8,7 @@ interface ClickInfo {
 
 const clicks = new Map<Player, ClickInfo[]>();
 
-// ... (他のイベントリスナーは変更なし) ...
+
 world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {
     if (!(damagingEntity instanceof Player) || !damagingEntity.hasTag("cps")) return;
     // trueCps プレイヤーが存在するかチェック

@@ -6,7 +6,9 @@ import {
     ItemUseAfterEvent,
     ItemUseOnAfterEvent,
     ItemUseBeforeEvent,
-    ItemUseOnBeforeEvent 
+    ItemUseOnBeforeEvent,
+    PlayerInteractWithBlockBeforeEvent,
+    PlayerInteractWithEntityBeforeEvent
 } from '@minecraft/server';
 import { Module, moduleManager } from '../../module/module';
 
@@ -23,12 +25,22 @@ class ItemEventModule implements Module {
 §r- キャンセル用タグ:\n
   §r  - §9w:item_use_cancel§r: 単純使用をキャンセル\n
   §r  - §9w:item_useOn_cancel§r: ブロックへの使用をキャンセル\n
-§r- タグは自動削除(デフォルト1tick後)。`;
+§r- タグは自動削除(デフォルト1tick後)。\n
+§r- ブロック/エンティティとのインタラクト時にタグを付与:\n
+  §r - §9w:touch_block_<block_id>§r: ブロックにインタラクト\n
+  §r - §9w:touch_entity_<entity_type>§r: エンティティにインタラクト\n
+  §r - §9w:touch_block_cancel§r: ブロックインタラクトをキャンセル\n
+  §r - §9w:touch_entity_cancel§r: エンティティインタラクトをキャンセル\n
+`;
 
     private readonly ITEM_USE_TAG_PREFIX = 'w:item_use_';
-    private readonly ITEM_USE_ON_TAG_PREFIX = 'w:item_useOn_'; 
-    private readonly ITEM_USE_CANCEL_TAG = 'w:item_use_cancel'; 
+    private readonly ITEM_USE_ON_TAG_PREFIX = 'w:item_useOn_';
+    private readonly ITEM_USE_CANCEL_TAG = 'w:item_use_cancel';
     private readonly ITEM_USE_ON_CANCEL_TAG = 'w:item_useOn_cancel';
+    private readonly TOUCH_BLOCK_TAG_PREFIX = 'w:touch_block_';
+    private readonly TOUCH_ENTITY_TAG_PREFIX = 'w:touch_entity_';
+    private readonly TOUCH_BLOCK_CANCEL_TAG = 'w:touch_block_cancel';
+    private readonly TOUCH_ENTITY_CANCEL_TAG = 'w:touch_entity_cancel';
     private tagTimeout = 1;
 
 
@@ -47,15 +59,19 @@ class ItemEventModule implements Module {
     private registerEventListeners(): void {
         world.afterEvents.itemUse.subscribe(this.handleItemUse);
         world.afterEvents.itemUseOn.subscribe(this.handleItemUseOn);
-        world.beforeEvents.itemUse.subscribe(this.handleItemUseBefore);       
-        world.beforeEvents.itemUseOn.subscribe(this.handleItemUseOnBefore);   
+        world.beforeEvents.itemUse.subscribe(this.handleItemUseBefore);
+        world.beforeEvents.itemUseOn.subscribe(this.handleItemUseOnBefore);
+        world.beforeEvents.playerInteractWithBlock.subscribe(this.handlePlayerInteractWithBlock);
+        world.beforeEvents.playerInteractWithEntity.subscribe(this.handlePlayerInteractWithEntity);
     }
 
     private unregisterEventListeners(): void {
         world.afterEvents.itemUse.unsubscribe(this.handleItemUse);
         world.afterEvents.itemUseOn.unsubscribe(this.handleItemUseOn);
-        world.beforeEvents.itemUse.unsubscribe(this.handleItemUseBefore);     
-        world.beforeEvents.itemUseOn.unsubscribe(this.handleItemUseOnBefore); 
+        world.beforeEvents.itemUse.unsubscribe(this.handleItemUseBefore);
+        world.beforeEvents.itemUseOn.unsubscribe(this.handleItemUseOnBefore);
+        world.beforeEvents.playerInteractWithBlock.unsubscribe(this.handlePlayerInteractWithBlock);
+        world.beforeEvents.playerInteractWithEntity.unsubscribe(this.handlePlayerInteractWithEntity);
     }
 
 
@@ -71,15 +87,12 @@ class ItemEventModule implements Module {
         const player = event.source;
         if (!(player instanceof Player)) return;
         const itemStack = event.itemStack;
-        this.addItemUseOnTag(player, itemStack); 
+        this.addItemUseOnTag(player, itemStack);
     };
 
-    // Before Events
     private handleItemUseBefore = (event: ItemUseBeforeEvent) => {
         const player = event.source;
         if (!(player instanceof Player)) return;
-
-        // キャンセルタグのチェック
         if (player.hasTag(this.ITEM_USE_CANCEL_TAG)) {
             event.cancel = true;
         }
@@ -89,31 +102,53 @@ class ItemEventModule implements Module {
         const player = event.source;
         if (!(player instanceof Player)) return;
 
-        // キャンセルタグのチェック
         if (player.hasTag(this.ITEM_USE_ON_CANCEL_TAG)) {
             event.cancel = true;
         }
     };
-    // Before Events
 
 
     // アイテム使用タグを追加 (itemUse 用)
     private addItemUseTag(player: Player, itemStack: ItemStack): void {
-        const itemId = itemStack.typeId.replace(':', '_');
+        const itemId = itemStack.typeId;
         const tag = `${this.ITEM_USE_TAG_PREFIX}${itemId}`;
         this.addTagWithTimeout(player, tag, this.tagTimeout);
     }
 
     // アイテム使用タグを追加 (itemUseOn 用)
     private addItemUseOnTag(player: Player, itemStack: ItemStack): void {
-        const itemId = itemStack.typeId.replace(':', '_');
+        const itemId = itemStack.typeId;
 
-        const tag = `${this.ITEM_USE_ON_TAG_PREFIX}${itemId}`; 
+        const tag = `${this.ITEM_USE_ON_TAG_PREFIX}${itemId}`;
         this.addTagWithTimeout(player, tag, this.tagTimeout);
     }
+    private handlePlayerInteractWithBlock = (event: PlayerInteractWithBlockBeforeEvent) => {
+        const player = event.player;
+        if (player.hasTag(this.TOUCH_BLOCK_CANCEL_TAG)) {
+            event.cancel = true;
+        }
+        const block = event.block;
+        const blockId = block.typeId;
+        const tag = `${this.TOUCH_BLOCK_TAG_PREFIX}${blockId}`;
+        this.addTagWithTimeout(player, tag, this.tagTimeout);
+    };
+
+
+    private handlePlayerInteractWithEntity = (event: PlayerInteractWithEntityBeforeEvent) => {
+        const player = event.player;
+        if (player.hasTag(this.TOUCH_ENTITY_CANCEL_TAG)) {
+            event.cancel = true;
+        }
+        const entity = event.target;
+        const entityTypeId = entity.typeId;
+        const tag = `${this.TOUCH_ENTITY_TAG_PREFIX}${entityTypeId}`;
+        this.addTagWithTimeout(player, tag, this.tagTimeout);
+    };
 
     private addTagWithTimeout(player: Player, tag: string, timeout: number): void {
-        player.addTag(tag);
+        system.run(()=>{
+            player.addTag(tag);
+        })
         system.runTimeout(() => {
             player.removeTag(tag);
         }, timeout);
