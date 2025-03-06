@@ -186,13 +186,11 @@ const stickItemsData: StickItemData[] = [
         ],
         item: "minecraft:breeze_rod",
         particle: "minecraft:wind_charged_emitter",
-        particleCount: 40,
+        particleCount: 15,
         soundOptions: {
             mainSound: [
-                { sound: "mob.breeze.idle", volume: 0.8, pitch: 1.0 },
-                { sound: "mob.breeze.shoot", volume: 0.9, pitch: 1.2, delay: 0.3 },
-                { sound: "wind_charge.burst", volume: 0.7, pitch: 0.8, delay: 0.8 },
-                { sound: "mob.breeze.jump", volume: 0.5, pitch: 1.5, delay: 1.5 }
+                { sound: "mob.breeze.idle", volume: 0.4, pitch: 1.0 },
+                { sound: "wind_charge.burst", volume: 0.3, pitch: 0.8, delay: 0.5 }
             ],
         },
     },
