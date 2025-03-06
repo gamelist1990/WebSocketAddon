@@ -1,0 +1,27 @@
+{
+        "format_version": "1.10.0",
+        "animation_controllers": {
+            "controller.animation.attack": {
+                "initial_state": "default",
+                "states": {
+                    "default": {
+                        "transitions": [
+                            {
+                                "attack": "variable.attack_time"
+                            }
+                        ]
+                    },
+                    "attack": {
+                        "on_entry": [
+                            "/tag @s add w:click"
+                        ],
+                        "transitions": [
+                            {
+                                "default": "(1.0)"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+}

@@ -1,4 +1,3 @@
-// src/utils/playerUtils.ts
 import { InputMode, MemoryTier, PlatformType, Player, world } from "@minecraft/server";
 import { getServerUptime } from "./timeUtils";
 import { formatTimestampJST } from "./timeUtils";

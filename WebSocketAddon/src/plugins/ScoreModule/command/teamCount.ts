@@ -7,12 +7,11 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
         description: `指定したタグを持つプレイヤーの人数に基づいて、条件分岐しコマンドを実行します。`,
         usage: `teamCount <チームタグ1,チームタグ2,...> <JSON> [true]\n  <チームタグ1,チームタグ2,...>: カンマ区切りのチームタグ。\n  <JSON>: チームタグとコマンドの対応を記述したJSON配列。 例: [{"team1":"cmd1"},{"team2":"cmd2"}]\n  [true]: (オプション) 最大人数のチームを比較。指定がない場合は、0人になったチームを検知。`,
 
-        execute: (message, event) => {
+        execute: (_message, event,args) => {
             const consoleOutput = (message: string) => {
                 console.warn(message);
             };
             try {
-                const args = message.replace(/^\/teamCount\s+/, '').split(/\s+/);
 
                 if (args.length < 2) {
                     consoleOutput(

@@ -8,14 +8,12 @@ export function registerCloseFormCommand(handler: Handler, moduleName: string) {
         moduleName: moduleName,
         description: `ユーザーが開いているフォームを強制的に閉じます`,
         usage: `closeForm execute as @a at @s run scriptevent ws:closeForm　で使用してください`,
-        execute: (message, event) => {
-            const args = message.split(/\s+/);
-            if (args) {
-                const player = event.sourceEntity;
-                if (player instanceof Player) {
-                    //@ts-ignore
-                    uiManager.closeAllForms(player);
-                }
+        execute: (_message, event) => {
+            const player = event.sourceEntity;
+            if (player instanceof Player) {
+                //@ts-ignore
+                uiManager.closeAllForms(player);
+
             }
         },
     });

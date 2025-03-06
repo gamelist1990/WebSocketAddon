@@ -7,13 +7,15 @@ interface ClickInfo {
 };
 
 const clicks = new Map<Player, ClickInfo[]>();
+const wClickClicks = new Map<Player, ClickInfo[]>(); // w:click 用のクリック情報を格納
 
 
 world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {
-    if (!(damagingEntity instanceof Player) || !damagingEntity.hasTag("cps")) return;
-    // trueCps プレイヤーが存在するかチェック
+    if (!(damagingEntity instanceof Player)) return;
     const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueCps"));
     if (!isCPSTrackingEnabled) return;
+    //w:clickタグを持っているか確認
+    if (damagingEntity.hasTag("w:click")) return; // w:click による検知とは分離
 
     const clickInfo = { timestamp: Date.now() };
     const playerClicks = clicks.get(damagingEntity) || [];
@@ -22,15 +24,33 @@ world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {
 });
 
 world.afterEvents.entityHitEntity.subscribe(({ damagingEntity }) => {
-    if (!(damagingEntity instanceof Player) || !damagingEntity.hasTag("cps")) return;
+    if (!(damagingEntity instanceof Player)) return;
     const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueCps"));
     if (!isCPSTrackingEnabled) return;
+    if (damagingEntity.hasTag("w:click")) return; // w:click による検知とは分離
+
 
     const clickInfo = { timestamp: Date.now() };
     const playerClicks = clicks.get(damagingEntity) || [];
     playerClicks.push(clickInfo);
     clicks.set(damagingEntity, playerClicks);
 });
+
+// w:click 用のイベントリスナー
+// animation controller
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        if (player.hasTag("w:click")) {
+            const clickInfo = { timestamp: Date.now() };
+            const playerClicks = wClickClicks.get(player) || [];
+            playerClicks.push(clickInfo);
+            wClickClicks.set(player, playerClicks);
+            player.removeTag("w:click");
+        }
+    }
+}, 1);
+
+
 
 const hpRegex = / \d+ §c❤§r| \d+ /;
 const cpsRegex = /\n§a\[CPS: \d+\]/; // Include the newline in the regex
@@ -63,11 +83,15 @@ system.runInterval(() => {
         nameTag = nameTag.replace(player.name, baseName);
 
 
-        // CPS (HPまたはプレイヤー名から改行)
+        // CPS
         if (player.hasTag("cps")) {
-            const cps = getPlayerCPS(player);
-            player.onScreenDisplay.setActionBar(`§aCPS: ${cps || 0}`);
-            const newCPSTag = `\n§a[CPS: ${cps || 0}]`;
+            const normalCPS = getPlayerCPS(player);
+            const wClickCPS = getPlayerCPSWClick(player);
+            const totalCPS = normalCPS + wClickCPS;
+
+
+            player.onScreenDisplay.setActionBar(`§aCPS: ${totalCPS || 0}`);
+            const newCPSTag = `\n§a[CPS: ${totalCPS || 0}]`;
             nameTag = nameTag.replace(cpsRegex, "") + newCPSTag;
         } else {
             nameTag = nameTag.replace(cpsRegex, "");
@@ -110,6 +134,15 @@ export function getPlayerCPS(player: Player): number {
     return recentClicks.length;
 }
 
+// w:click 用の CPS 計算関数
+export function getPlayerCPSWClick(player: Player): number {
+    const currentTime = Date.now();
+    const playerClicks = wClickClicks.get(player) || [];
+    const recentClicks = playerClicks.filter(({ timestamp }) => currentTime - 1000 < timestamp);
+    wClickClicks.set(player, recentClicks);  // 1秒以上前のクリック情報を削除
+    return recentClicks.length;
+}
+
 
 // tag コマンド
 export function registerTagCommand(handler: Handler, moduleName: string) {
@@ -117,11 +150,10 @@ export function registerTagCommand(handler: Handler, moduleName: string) {
         moduleName: moduleName,
         description: 'プレイヤーにタグを追加/削除します。',
         usage: 'tag <add|remove> <タグ名>',
-        execute: (message, event) => {
+        execute: (_message, event, args) => {
             if (!(event.sourceEntity instanceof Player)) return;
 
             const player = event.sourceEntity;
-            const args = message.split(/\s+/);
 
             if (args.length < 2) {
                 player.sendMessage('引数が不足しています。使用方法: tag <add|remove> <タグ名>');
@@ -136,10 +168,10 @@ export function registerTagCommand(handler: Handler, moduleName: string) {
                 if (tagName === "w:device") {
                     const device = clientdevice(player);
                     const memoryTier = getMemoryTier(player);
-                    const inputType = InputType(player); 
-                    const deviceName = ["PC", "MB", "CS"][device] ?? "??";
-                    const memoryTierName = ["?", "1.5", "2", "4", "8", "8+"][memoryTier] ?? "?";
-                    const inputTypeName = ["KM", "GP", "MC", "TC"][inputType] ?? "??";
+                    const inputType = InputType(player);
+                    const deviceName = ["PC", "Mobile", "Console"][device] ?? "??";
+                    const memoryTierName = ["?", "1", "2", "4", "8", "8+"][memoryTier] ?? "?";
+                    const inputTypeName = ["keyboard", "GamePad", "motionPad", "Touch"][inputType] ?? "??";
 
                     for (const tag of player.getTags()) {
                         if (tag.startsWith("w:device_")) {
@@ -155,8 +187,6 @@ export function registerTagCommand(handler: Handler, moduleName: string) {
 
                 // 通常のタグ
                 player.addTag(tagName);
-                sendMessage(`タグ '${tagName}' を追加しました。`);
-
             } else if (action === 'remove') {
                 if (tagName.startsWith("w:device_")) {
                     for (const tag of player.getTags()) {
@@ -164,10 +194,8 @@ export function registerTagCommand(handler: Handler, moduleName: string) {
                             player.removeTag(tag);
                         }
                     }
-                    sendMessage(`タグ '${tagName}'とその関連タグを削除しました`);
                 } else {
                     player.removeTag(tagName);
-                    sendMessage(`タグ '${tagName}' を削除しました。`);
                 }
             } else {
                 sendMessage('無効なアクションです。add または remove を指定してください。');

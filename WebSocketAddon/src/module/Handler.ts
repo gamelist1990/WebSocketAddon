@@ -5,7 +5,7 @@ interface CommandHandler {
     moduleName: string;
     description?: string;
     usage?: string;
-    execute: (message: string, event: ScriptEventCommandMessageAfterEvent) => void;
+    execute: (message: string, event: ScriptEventCommandMessageAfterEvent, args: string[]) => void; // 引数をオプションに変更
 }
 
 export class Handler {
@@ -48,9 +48,10 @@ export class Handler {
         }
 
         if (this.commandHandlers[commandId]) {
+            const args = message.trim().split(/\s+/); // メッセージを引数に分割
             this.commandHandlers[commandId].forEach(commandHandler => {
                 if (this.eventManager.isModuleEnabled(commandHandler.moduleName)) {
-                    commandHandler.execute(message, event);
+                    commandHandler.execute(message, event, args); // 引数とメッセージを渡す（オプション）
                 }
             });
         }
@@ -62,8 +63,9 @@ export class Handler {
             moduleName: "ModuleEditer",
             description: "Helpコマンド help コマンド名でその説明を見れます",
             usage: "help <page|commandName>",
-            execute: (message, event) => {
-                const args = message.trim().split(/\s+/);
+            execute: (_message, event, args) => { // message, event 引数をオプションに
+                if (!event) return;
+
                 if (args.length === 0 || (args.length === 1 && args[0] === "")) {
                     this.showCommandListPage(event, 1);
                 } else {
@@ -95,7 +97,7 @@ export class Handler {
                 const enabledHandler = this.commandHandlers[commandId].find(handler => this.eventManager.isModuleEnabled(handler.moduleName));
                 enabledCommands.push({
                     command: commandId,
-                    description: enabledHandler?.description || "説明無し", 
+                    description: enabledHandler?.description || "説明無し",
                 });
             }
         }
@@ -109,10 +111,10 @@ export class Handler {
 
         if (commandsToShow.length > 0) {
 
-            let helpMessage = `§a===== [Help] =====§r (Page ${pageNumber}/${totalPages})\n`; 
+            let helpMessage = `§a===== [Help] =====§r (Page ${pageNumber}/${totalPages})\n`;
             commandsToShow.forEach(cmdInfo => {
-                helpMessage += `§b> ${cmdInfo.command}§r\n`; 
-                helpMessage += `  §7- ${cmdInfo.description}§r\n`; 
+                helpMessage += `§b> ${cmdInfo.command}§r\n`;
+                helpMessage += `  §7- ${cmdInfo.description}§r\n`;
             });
 
             //ページネーション情報

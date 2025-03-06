@@ -43,9 +43,9 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
 
     handler.registerCommand('resetTag', {
         moduleName: moduleName,
-        description: '実行したプレイヤーのタグを全て削除します。',
-        usage: 'resetTag',
-        execute: (_message, event) => {
+        description: '実行したプレイヤーのタグを操作します。\n`resetTag`: 全てのタグを削除\n`resetTag <タグ名>`: 指定したタグ名に類似するタグを削除',
+        usage: 'resetTag [タグ名]',
+        execute: (_message, event, args) => { // args を追加
             const sendMessage = (message: string) => {
                 if (event.sourceEntity instanceof Player) {
                     const player = event.sourceEntity;
@@ -53,13 +53,21 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
                 }
             };
 
-            if (event.sourceEntity instanceof Player) {
-                const player = event.sourceEntity;
-                const tags = player.getTags();
-                if (tags.length === 0) {
-                    sendMessage(`§cタグがありません`);
-                    return;
-                }
+            if (!(event.sourceEntity instanceof Player)) {
+                sendMessage('このコマンドはプレイヤーのみ実行できます。');
+                return;
+            }
+
+            const player = event.sourceEntity;
+            const tags = player.getTags();
+
+            if (tags.length === 0) {
+                sendMessage(`§cタグがありません`);
+                return;
+            }
+
+            if (args.length === 0) {
+                // 引数がない場合 (resetTag): 全タグ削除
                 system.run(() => {
                     for (const tag of tags) {
                         player.removeTag(tag);
@@ -67,7 +75,29 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
                     sendMessage('タグを全て削除しました。');
                 });
             } else {
-                sendMessage('このコマンドはプレイヤーのみ実行できます。');
+                // 引数がある場合 (resetTag <タグ名>): 類似タグ削除
+                const targetTag = args.join(' '); // コマンドの引数を結合 (スペース区切りでタグ名が指定されることを想定)
+                const similarTags: string[] = [];
+
+                // 類似性判定 (単純な部分一致を使用。より高度な方法も検討可能)
+                for (const tag of tags) {
+                    if (tag.toLowerCase().includes(targetTag.toLowerCase())) {
+                        similarTags.push(tag);
+                    }
+                }
+
+
+                if (similarTags.length === 0) {
+                    sendMessage(`§c"${targetTag}" に類似するタグは見つかりませんでした。`);
+                    return;
+                }
+
+                system.run(() => {
+                    for (const tag of similarTags) {
+                        player.removeTag(tag);
+                    }
+                    sendMessage(`"${targetTag}" に類似する以下のタグを削除しました:\n${similarTags.join(', ')}`);
+                });
             }
         },
     });
