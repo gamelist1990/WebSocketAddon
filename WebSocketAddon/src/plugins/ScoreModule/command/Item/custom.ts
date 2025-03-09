@@ -5,7 +5,7 @@ import { ItemLockMode } from "@minecraft/server";
 
 
 export function registerCustomItem(id: number, customItem: CustomItem): void {
-    customItemsMap.set(`${id}`, customItem);
+    customItemsMap.set(`${id as number}`, customItem as CustomItem);
     // console.warn(`${customItem.name} registered`);
 }
 

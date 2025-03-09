@@ -82,6 +82,8 @@ class SumoModule implements Module {
         const deadPlayer = event.deadEntity;
         if (!(deadPlayer instanceof Player)) return;
 
+
+
         const sumoTag = this.getSumoTag(deadPlayer);
         if (!sumoTag) return;
 

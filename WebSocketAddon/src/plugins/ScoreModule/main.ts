@@ -18,6 +18,8 @@ import { registerCheckBlockCommand } from './command/checkBlock';
 import { registerTagCommand } from './command/tag';
 import { registerItemCommand } from './command/Item/custom';
 import { registerTransfer } from './command/transfer';
+import { registerAutoArmorCommand } from './command/arrmor';
+import { registerDuelCommand } from './command/duel';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -145,7 +147,9 @@ class ScoreModule implements Module {
     registerCheckBlockCommand(handler, this.name)
     registerTagCommand(handler, this.name);
     registerItemCommand(handler, this.name);
-    registerTransfer(handler, this.name)
+    registerTransfer(handler, this.name);
+    registerAutoArmorCommand(handler,this.name)
+    registerDuelCommand(handler,this.name)
   }
 
 }

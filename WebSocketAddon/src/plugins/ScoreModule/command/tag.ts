@@ -86,8 +86,8 @@ system.runInterval(() => {
         // CPS
         if (player.hasTag("cps")) {
             const normalCPS = getPlayerCPS(player);
-            const wClickCPS = getPlayerCPSWClick(player);
-            const totalCPS = normalCPS + wClickCPS;
+           // const wClickCPS = getPlayerCPSWClick(player);
+            const totalCPS = normalCPS;
 
 
             player.onScreenDisplay.setActionBar(`§aCPS: ${totalCPS || 0}`);

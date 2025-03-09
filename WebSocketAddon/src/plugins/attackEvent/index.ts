@@ -136,10 +136,7 @@ class AttackModule implements Module {
      * 攻撃アイテムのタグを追加する
      */
     private addAttackItemTag(attacker: Player, itemStack: ItemStack): void {
-        const tag = `${AttackModule.ATTACK_ITEM_TAG}${itemStack.typeId.replace(
-            ':',
-            '_'
-        )}`;
+        const tag = `${AttackModule.ATTACK_ITEM_TAG}${itemStack.typeId}`;
 
         attacker.addTag(tag);
         this.removeTagWithTimeout(attacker, tag, this.tagTimeout); //タグは上書きではなく、時間経過で消えるようにする
@@ -322,15 +319,13 @@ class AttackModule implements Module {
         try {
             projectile.addTag(AttackModule.HIT_BLOCK_TAG);
             this.removeTagWithTimeout(projectile, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
-        } catch (error) {
-        }
+        
         source.addTag(AttackModule.HIT_BLOCK_TAG);
         this.removeTagWithTimeout(source, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
-
-        const blockIdTag = `${AttackModule.HIT_BLOCK_ID_TAG}${hitBlock.typeId.replace(':', '_')}`;
+        const blockIdTag = `${AttackModule.HIT_BLOCK_ID_TAG}${hitBlock.typeId}`;
         source.addTag(blockIdTag);
         this.removeTagWithTimeout(source, blockIdTag, this.tagTimeout);
-        try {
+        
             projectile.addTag(blockIdTag);
             this.removeTagWithTimeout(projectile, blockIdTag, this.tagTimeout);
         } catch (error) {
@@ -352,7 +347,7 @@ class AttackModule implements Module {
 
 
         // Get the entity type ID and add the tag.
-        const entityTypeIdTag = `${AttackModule.HIT_ENTITY_ITEM_TAG}${hitEntity.typeId.replace(':', '_')}`;
+        const entityTypeIdTag = `${AttackModule.HIT_ENTITY_ITEM_TAG}${hitEntity.typeId}`;
         source.addTag(entityTypeIdTag);
         this.removeTagWithTimeout(source, entityTypeIdTag, this.tagTimeout);
     };

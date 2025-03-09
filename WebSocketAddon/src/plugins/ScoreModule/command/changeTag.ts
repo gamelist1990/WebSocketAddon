@@ -162,7 +162,6 @@ export function registerChangeTag2Command(handler: Handler, moduleName: string) 
     });
 
     function executeCommand(commandTemplate: string, player: Player, _dimension: Dimension) {
-        // ... (executeCommand は変更なし) ...
         let command = commandTemplate;
         command = command.replaceAll("{player}", player.name);
 

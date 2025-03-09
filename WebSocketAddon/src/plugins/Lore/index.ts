@@ -77,7 +77,6 @@ class LoreEditorModule implements Module {
                 player.sendMessage("§cエラー: 不明な type です。");
                 return;
         }
-        player.sendMessage(`§a${formDefinition.type}を実行しました。`);
 
     }
 
