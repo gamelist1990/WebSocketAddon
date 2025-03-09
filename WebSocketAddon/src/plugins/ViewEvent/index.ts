@@ -30,21 +30,37 @@ class ViewEvent implements Module {
 
     onDisable(): void {
         this.unregisterEventListeners();
+        for (const player of world.getAllPlayers()) {
+            const playerData = this.trackedPlayers.get(player.name);
+            if (playerData) {
+                if (playerData.blockTag) {
+                    player.removeTag(playerData.blockTag);
+                }
+                if (playerData.entityTag) {
+                    player.removeTag(playerData.entityTag);
+                }
+            }
+        }
         this.trackedPlayers.clear();
     }
 
+    private runId: any;
+
     private registerEventListeners(): void {
-        system.runInterval(() => this.checkView());
+        this.runId = system.runInterval(() => this.checkView());
+        this.runId;
     }
 
     private unregisterEventListeners(): void {
+        system.clearRun(this.runId);
+
     }
 
     private isWithinWorldBounds(x: number, y: number, z: number): boolean {
         const worldMinX = -30000000;
         const worldMaxX = 29999999;
-        const worldMinY = -64; 
-        const worldMaxY = 219; 
+        const worldMinY = -64;
+        const worldMaxY = 219;
         const worldMinZ = -30000000;
         const worldMaxZ = 29999999;
         return x >= worldMinX && x <= worldMaxX &&
@@ -96,7 +112,7 @@ class ViewEvent implements Module {
             }
 
 
-            
+
             const entityRaycastOptions: EntityRaycastOptions = {
                 maxDistance: 10,
             };

@@ -545,22 +545,17 @@ export class DuelManager {
         if (totalGames === 0) {
             return 0;
         }
-
-        // 勝利数をゲーム数に基づいて調整する（例：少ないゲーム数での高勝率を抑制）
-        const adjustedWins = wins + 1;  // 0勝の場合でも1勝として計算を始める
-        const adjustedTotalGames = totalGames + 5; // 5ゲームを最初から加える
-
-        return Math.floor((adjustedWins / adjustedTotalGames) * 100);
+        return Math.floor((wins / totalGames) * 100);
     }
     private updateAdjustedWins(player: Player, deltaWins: number): void {
         const objective = this.getScoreboardObjective(SCOREBOARD_OBJECTIVES.ADJUSTED_WINS);
-        let currentAdjustedWins = objective.getScore(player) ?? 0;  // 既存の調整済み勝利数を取得
+        let currentAdjustedWins = this.getPlayerScore(player, SCOREBOARD_OBJECTIVES.ADJUSTED_WINS) ?? 0;  // 既存の調整済み勝利数を取得
         objective.setScore(player, currentAdjustedWins + deltaWins);  // スコアを更新
     }
     private updateWinRate(player: Player): void {
         const totalGames = this.getPlayerScore(player, SCOREBOARD_OBJECTIVES.TOTAL_GAMES);
-        const adjustedWins = this.getPlayerScore(player, SCOREBOARD_OBJECTIVES.ADJUSTED_WINS); // 調整された勝利数を使用
-        const winRate = this.calculateWinRate(adjustedWins, totalGames); // 調整された勝利数で勝率を計算
+        const wins = this.getPlayerScore(player, SCOREBOARD_OBJECTIVES.WIN_COUNT); // 調整された勝利数を使用
+        const winRate = this.calculateWinRate(wins, totalGames); // 調整された勝利数で勝率を計算
         this.setPlayerScoreboard(player, SCOREBOARD_OBJECTIVES.WIN_RATE, winRate);
     }
 
