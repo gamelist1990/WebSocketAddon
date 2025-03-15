@@ -111,6 +111,15 @@ system.runInterval(() => {
                 teamColor = "§a";
             } else if (player.hasTag("team5")) {
                 teamColor = "§d";
+            } else if (player.hasTag("none")) {
+                teamColor = "§r";
+            }
+
+            if (teamColor == "§r") {
+                nameTag = player.name;
+                system.run(()=>{
+                    player.removeTag("none")
+                })
             }
 
             if (teamColor !== "§f") {

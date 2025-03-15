@@ -2,4 +2,5 @@ import './boosts/main'
 import './upblow/main'
 import './gun1/main'
 import './stick/main'
-
+import './drill/main'
+import './barrier/main'

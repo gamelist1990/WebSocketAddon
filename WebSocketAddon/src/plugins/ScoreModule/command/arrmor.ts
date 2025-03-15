@@ -5,6 +5,7 @@ import {
     EquipmentSlot,
     BlockInventoryComponent,
     ItemLockMode,
+    EntityInventoryComponent
 } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
@@ -12,7 +13,7 @@ export function registerAutoArmorCommand(handler: Handler, moduleName: string) {
     handler.registerCommand("autoArmor", {
         moduleName: moduleName,
         description:
-            "指定されたタグを持つプレイヤーのアーマースロットに、指定されたチェストのアイテムを装備させます。ItemLockModeでロックも可能。",
+            "指定されたタグを持つプレイヤーのアーマースロットに、指定されたチェストのアイテムを装備させます。ItemLockModeでロックも可能。ホットバーにもアイテムをコピーし、ロック設定をチェストスロット9で制御。",
         usage: "autoArmor <chestX> <chestY> <chestZ> <tagName> <headSlotMode> <chestSlotMode> <legsSlotMode> <feetSlotMode>",
         execute: (message, event) => {
             const consoleOutput = (msg: string) => console.warn(msg);
@@ -96,8 +97,26 @@ export function registerAutoArmorCommand(handler: Handler, moduleName: string) {
                     EquipmentSlot.Feet,
                 ];
 
-                for (let i = 0; i < armorSlots.length; i++) {
-                    const itemStack = chestContainer?.getItem(i);
+                // ホットバーへのアイテムコピーとロック設定
+                const playerInventoryComponent = player.getComponent("inventory") as EntityInventoryComponent;
+                if (!playerInventoryComponent) {
+                    consoleOutput(`Player ${player.name} does not have an inventory component.`);
+                    continue;
+                }
+                const playerInventory = playerInventoryComponent.container;
+
+                const lockSettingItem = chestContainer?.getItem(8); // チェストのスロット9(index 8)のアイテムでロック設定
+                let hotbarLockMode: ItemLockMode = ItemLockMode.none; // デフォルトはロックなし
+
+                if (lockSettingItem?.typeId === "minecraft:diamond_block") {
+                    hotbarLockMode = ItemLockMode.slot; // スロット固定
+                } else if (lockSettingItem?.typeId === "minecraft:gold_block") {
+                    hotbarLockMode = ItemLockMode.inventory; // インベントリ固定
+                }
+
+                for (let i = 0; i < 4; i++) { // アーマースロットは4つ
+                    const chestItemIndex = i;
+                    const itemStack = chestContainer?.getItem(chestItemIndex); // チェストの0-3番目のスロットからアーマーを取得
                     const slotMode = slotModes[i];
 
                     try {
@@ -110,8 +129,26 @@ export function registerAutoArmorCommand(handler: Handler, moduleName: string) {
                         console.error(`防具の装備/解除中にエラーが発生しました: ${error}`);
                     }
                 }
+
+                // ホットバーへのアイテムコピー(スロット1-4に対応)
+                for (let i = 0; i < 9; i++) {
+                    const hotbarSlot = i; // ホットバースロット (0-8)
+                    const chestHotbarItemIndex = i + 18;
+
+                    const hotbarItemStack = chestContainer?.getItem(chestHotbarItemIndex)?.clone();  //アイテムスタックをクローンする.
+
+                    if (hotbarItemStack) { // アイテムがある場合のみ処理
+                        hotbarItemStack.amount = 1;  // 個数を1に制限
+                        hotbarItemStack.lockMode = hotbarLockMode; // ロックモードを設定
+                        try {
+                            playerInventory?.setItem(hotbarSlot, hotbarItemStack);
+                        } catch (error) {
+                            console.error(`ホットバーへのアイテムコピー中にエラーが発生しました: ${error}`);
+                        }
+
+                    }
+                }
             }
-            sendMessage("防具を装備/解除しました。");
         },
     });
 }

@@ -5,9 +5,9 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
     handler.registerCommand('teamCount', {
         moduleName: moduleName,
         description: `指定したタグを持つプレイヤーの人数に基づいて、条件分岐しコマンドを実行します。`,
-        usage: `teamCount <チームタグ1,チームタグ2,...> <JSON> [true]\n  <チームタグ1,チームタグ2,...>: カンマ区切りのチームタグ。\n  <JSON>: チームタグとコマンドの対応を記述したJSON配列。 例: [{"team1":"cmd1"},{"team2":"cmd2"}]\n  [true]: (オプション) 最大人数のチームを比較。指定がない場合は、0人になったチームを検知。`,
+        usage: `teamCount <チームタグ1,チームタグ2,...> <JSON> [true] [onlyOneRemaining]\n  <チームタグ1,チームタグ2,...>: カンマ区切りのチームタグ。\n  <JSON>: チームタグとコマンドの対応を記述したJSON配列。 例: [{"team1":"cmd1"},{"team2":"cmd2"}]\n  [true]: (オプション) 最大人数のチームを比較。\n  [onlyOneRemaining]: (オプション) 最後のチームを検知。`,
 
-        execute: (_message, event,args) => {
+        execute: (_message, event, args) => {
             const consoleOutput = (message: string) => {
                 console.warn(message);
             };
@@ -15,7 +15,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
 
                 if (args.length < 2) {
                     consoleOutput(
-                        '使用方法: /ws:teamCount <チームタグ1,チームタグ2,...> <コマンドリスト> [true]',
+                        '使用方法: /ws:teamCount <チームタグ1,チームタグ2,...> <コマンドリスト> [true] [onlyOneRemaining]',
                     );
                     return;
                 }
@@ -31,6 +31,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                 const commandListStr = matchResult[0];
                 const commandList = JSON.parse(commandListStr);
                 const compareMode = args.includes('true'); // trueが指定されたか
+                const onlyOneRemaining = args.includes('only'); // onlyOneRemaining が指定されたか
 
                 if (!Array.isArray(commandList)) {
                     consoleOutput(
@@ -94,16 +95,25 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                         }
                     } else {
                         // 0人生存確認モード (従来の動作)
-                        for (const teamTag of teamTags) {
-                            const teamPlayerCount = world
-                                .getPlayers()
-                                .filter((player) => player.hasTag(teamTag)).length;
-                            if (teamPlayerCount === 0) {
-                                // コマンドリストからチームに対応するコマンドを検索
-                                const commandObj = commandList.find((obj) => obj[teamTag]);
+                        if (onlyOneRemaining) {
+                            // onlyOneRemainingがtrueの場合
+                            let aliveTeams: string[] = [];
+                            for (const teamTag of teamTags) {
+                                const teamPlayerCount = world
+                                    .getPlayers()
+                                    .filter((player) => player.hasTag(teamTag)).length;
+                                if (teamPlayerCount > 0) {
+                                    aliveTeams.push(teamTag);
+                                }
+                            }
+
+                            if (aliveTeams.length === 1) {
+                                // 生存チームが1つだけの場合
+                                const winningTeam = aliveTeams[0];
+                                const commandObj = commandList.find((obj) => obj[winningTeam]);
                                 if (commandObj) {
-                                    const command = commandObj[teamTag];
-                                    //    consoleOutput(`チーム ${teamTag} の人数が0になったため、コマンド「${command}」を実行します。`);
+                                    const command = commandObj[winningTeam];
+                                    // consoleOutput(`最後のチーム ${winningTeam} が残ったため、コマンド「${command}」を実行します。`);
                                     system.run(() => {
                                         try {
                                             world.getDimension('overworld').runCommandAsync(command);
@@ -112,7 +122,31 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                         }
                                     });
                                 } else {
-                                    consoleOutput(`チーム ${teamTag} に対応するコマンドが定義されていません。`);
+                                    consoleOutput(`チーム ${winningTeam} に対応するコマンドが定義されていません。`);
+                                }
+                            }
+                        } else {
+                            // onlyOneRemaining が false の場合 (従来の動作)
+                            for (const teamTag of teamTags) {
+                                const teamPlayerCount = world
+                                    .getPlayers()
+                                    .filter((player) => player.hasTag(teamTag)).length;
+                                if (teamPlayerCount === 0) {
+                                    // コマンドリストからチームに対応するコマンドを検索
+                                    const commandObj = commandList.find((obj) => obj[teamTag]);
+                                    if (commandObj) {
+                                        const command = commandObj[teamTag];
+                                        //    consoleOutput(`チーム ${teamTag} の人数が0になったため、コマンド「${command}」を実行します。`);
+                                        system.run(() => {
+                                            try {
+                                                world.getDimension('overworld').runCommandAsync(command);
+                                            } catch (commandError) {
+                                                consoleOutput(`コマンド実行中にエラーが発生しました: ${commandError}`);
+                                            }
+                                        });
+                                    } else {
+                                        consoleOutput(`チーム ${teamTag} に対応するコマンドが定義されていません。`);
+                                    }
                                 }
                             }
                         }

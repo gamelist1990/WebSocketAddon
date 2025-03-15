@@ -105,6 +105,9 @@ class AttackModule implements Module {
         const { hurtEntity, damageSource } = event;
         const attacker = this.getDamagingEntity(damageSource);
 
+        hurtEntity.addTag(AttackModule.DAMAGED_TAG);
+        this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG, this.tagTimeout);
+
         // 攻撃者がプレイヤーである場合のみ処理
         if (attacker instanceof Player) {
             this.playerAttackMap.set(hurtEntity.id, attacker.id);
@@ -121,11 +124,6 @@ class AttackModule implements Module {
                 if (itemStack) {
                     this.addAttackItemTag(attacker, itemStack);
                 }
-            }
-            // 被攻撃者がプレイヤーの場合、ダメージタグを追加
-            if (hurtEntity instanceof Player) {
-                hurtEntity.addTag(AttackModule.DAMAGED_TAG);
-                this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG, this.tagTimeout);
             }
         }
 
@@ -319,13 +317,13 @@ class AttackModule implements Module {
         try {
             projectile.addTag(AttackModule.HIT_BLOCK_TAG);
             this.removeTagWithTimeout(projectile, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
-        
-        source.addTag(AttackModule.HIT_BLOCK_TAG);
-        this.removeTagWithTimeout(source, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
-        const blockIdTag = `${AttackModule.HIT_BLOCK_ID_TAG}${hitBlock.typeId}`;
-        source.addTag(blockIdTag);
-        this.removeTagWithTimeout(source, blockIdTag, this.tagTimeout);
-        
+
+            source.addTag(AttackModule.HIT_BLOCK_TAG);
+            this.removeTagWithTimeout(source, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
+            const blockIdTag = `${AttackModule.HIT_BLOCK_ID_TAG}${hitBlock.typeId}`;
+            source.addTag(blockIdTag);
+            this.removeTagWithTimeout(source, blockIdTag, this.tagTimeout);
+
             projectile.addTag(blockIdTag);
             this.removeTagWithTimeout(projectile, blockIdTag, this.tagTimeout);
         } catch (error) {

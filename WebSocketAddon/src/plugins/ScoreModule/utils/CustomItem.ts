@@ -11,6 +11,7 @@ import {
   Block,
   EntityHitEntityAfterEvent,
   EntityHitBlockAfterEvent,
+  system,
 } from "@minecraft/server";
 
 export enum EventType {
@@ -217,7 +218,12 @@ class CustomItemImpl implements CustomItem {
           eventType: EventType.ItemUse,
         };
         this.callback(player, eventData);
+
+        if (this.remove) {
+          this.removeItem(player, usedItemStack);
+        }
       }
+      
     }
   }
   private handleEntityHit(event: EntityHitEntityAfterEvent): void {
@@ -321,12 +327,16 @@ class CustomItemImpl implements CustomItem {
         currentItem.typeId === usedItemStack.typeId &&
         currentItem.nameTag === usedItemStack.nameTag
       ) {
-        if (currentItem.amount <= 1) {
-          inventory.container.setItem(i, undefined);
-        } else {
-          currentItem.amount -= 1;
-          inventory.container.setItem(i, currentItem);
-        }
+        system.run(()=>{
+          if (inventory.container) {
+            if (currentItem.amount <= 1) {
+              inventory.container.setItem(i, undefined);
+            } else {
+              currentItem.amount -= 1;
+              inventory.container.setItem(i, currentItem);
+            }
+          }
+        })
         return;
       }
     }

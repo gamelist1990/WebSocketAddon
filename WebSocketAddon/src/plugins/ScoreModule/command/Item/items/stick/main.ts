@@ -212,11 +212,7 @@ const stickItemsData: StickItemData[] = [
             mainSound: [
                 { sound: "bubble.pop", volume: 1.0, pitch: 1.0 },
             ],
-        },
-        knockback: {
-            horizontalStrength: 0.8, // 水平方向
-            verticalStrength: 0.5,   // 垂直方向
-        },
+        }
     },
 ];
 

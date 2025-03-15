@@ -88,7 +88,7 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
 
 
                 if (similarTags.length === 0) {
-                    sendMessage(`§c"${targetTag}" に類似するタグは見つかりませんでした。`);
+                 //   sendMessage(`§c"${targetTag}" に類似するタグは見つかりませんでした。`);
                     return;
                 }
 
@@ -96,7 +96,7 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
                     for (const tag of similarTags) {
                         player.removeTag(tag);
                     }
-                    sendMessage(`"${targetTag}" に類似する以下のタグを削除しました:\n${similarTags.join(', ')}`);
+                    //sendMessage(`"${targetTag}" に類似する以下のタグを削除しました:\n${similarTags.join(', ')}`);
                 });
             }
         },

@@ -8,10 +8,10 @@ const boostFeather = new CustomItem({
     lore: ["§7使用すると前方向にダッシュし", "§7一時的に移動速度が上昇する"], // §7 で色を灰色に
     item: "minecraft:feather",
     amount: 1,
-    remove: true,
 }).then((player: Player, eventData) => {
     system.run(() => {
         if (eventData.eventType !== EventType.ItemUse) return;
+        boostFeather.removeItem(player,boostFeather.get())
         const direction = player.getViewDirection();
         const horizontalForce: VectorXZ = { x: direction.x * 4, z: direction.z * 4 }
         //@ts-ignore

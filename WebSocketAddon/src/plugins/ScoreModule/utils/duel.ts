@@ -904,7 +904,8 @@ export class DuelManager {
 
     private async showSendDuelRequestForm(player: Player): Promise<void> {
         const players = world.getAllPlayers()
-            .filter(p => p.name !== player.name && p.hasTag(DUEL_PLAYER_TAG));
+            .filter(p => p.name !== player.name && p.hasTag(DUEL_PLAYER_TAG))
+
 
         if (players.length === 0) {
             player.sendMessage("§cオンラインのプレイヤーがいません。");
@@ -920,7 +921,9 @@ export class DuelManager {
 
         const targetPlayerName = players[playerResponse.selection!].name;
 
+
         const mapSelectForm = new ActionFormData()
+
             .title("マップを選択")
             .button("ランダムマップ")
             .button("マップを指定");
@@ -932,7 +935,10 @@ export class DuelManager {
         let mapNameToUse: string | undefined;
         if (mapResponse.selection === 0) { // ランダムマップが選択された場合
             const availableMaps = Object.keys(this.duelConfigs);
-            if (availableMaps.length > 0) {
+            const usableMaps = availableMaps.filter(map => !this.isMapInUse(map));
+
+            if (usableMaps.length > 0) {
+
                 const randomIndex = Math.floor(Math.random() * availableMaps.length);
                 mapNameToUse = availableMaps[randomIndex];
             } else {
@@ -941,21 +947,23 @@ export class DuelManager {
             }
         } else if (mapResponse.selection === 1) {
             const mapList = Object.keys(this.duelConfigs);
+
             if (mapList.length === 0) {
                 player.sendMessage("§cデュエルマップが設定されていません。");
                 return;
             }
             const selectMapForm = new ActionFormData().title("マップを選択");
-            mapList.forEach(map => selectMapForm.button(map));
+            const usableMaps = mapList.filter(map => !this.isMapInUse(map));
+
+            usableMaps.forEach(map => selectMapForm.button(map));
 
             //@ts-ignore
             const selectedMap = await selectMapForm.show(player);
             if (selectedMap.canceled) return;
-            mapNameToUse = mapList[selectedMap.selection!];
+            mapNameToUse = usableMaps[selectedMap.selection!];
 
-            // ★★★ 追加：選択したマップが使用中の場合は警告して中断 ★★★
-            if (mapNameToUse && this.isMapInUse(mapNameToUse)) {
-                player.sendMessage("§c選択したマップは既に使用中です。他のマップを選択してください。");
+            if (!mapNameToUse) {
+                player.sendMessage("選択できるマップがありません.");
                 return; // 処理を中断
             }
         }
