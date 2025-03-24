@@ -5,13 +5,7 @@
       "identifier": "minecraft:player",
       "spawn_category": "creature",
       "is_spawnable": false,
-      "is_summonable": false,
-      "animations": {
-        "attack": "controller.animation.attack"
-      },
-      "scripts": {
-        "animate": ["attack"]
-      }
+      "is_summonable": false
     },
     "component_groups": {
       "minecraft:add_raid_omen": {
@@ -26,7 +20,10 @@
           "remove_effects": "bad_omen"
         },
         "minecraft:timer": {
-          "time": [0.0, 0.0],
+          "time": [
+            0.0,
+            0.0
+          ],
           "looping": false,
           "time_down_event": {
             "event": "minecraft:clear_add_raid_omen",
@@ -60,7 +57,9 @@
         "on_death": "Math.Min(query.player_level * 7, 100)"
       },
       "minecraft:type_family": {
-        "family": ["player"]
+        "family": [
+          "player"
+        ]
       },
       "minecraft:is_hidden_when_invisible": {},
       "minecraft:loot": {
@@ -140,17 +139,27 @@
       },
       "minecraft:rideable": {
         "seat_count": 2,
-        "family_types": ["parrot_tame"],
+        "family_types": [
+          "parrot_tame"
+        ],
         "pull_in_entities": true,
         "seats": [
           {
-            "position": [0.4, -0.2, -0.1],
+            "position": [
+              0.4,
+              -0.2,
+              -0.1
+            ],
             "min_rider_count": 0,
             "max_rider_count": 0,
             "lock_rider_rotation": 0
           },
           {
-            "position": [-0.4, -0.2, -0.1],
+            "position": [
+              -0.4,
+              -0.2,
+              -0.1
+            ],
             "min_rider_count": 1,
             "max_rider_count": 2,
             "lock_rider_rotation": 0
@@ -161,23 +170,21 @@
       "minecraft:block_climber": {},
       "minecraft:environment_sensor": {
         "triggers": {
-          "gain_raid_omen": {
-            "filters": {
-              "all_of": [
-                {
-                  "test": "has_mob_effect",
-                  "subject": "self",
-                  "value": "bad_omen"
-                },
-                {
-                  "test": "is_in_village",
-                  "subject": "self",
-                  "value": true
-                }
-              ]
-            },
-            "event": "minecraft:gain_raid_omen"
-          }
+          "filters": {
+            "all_of": [
+              {
+                "test": "has_mob_effect",
+                "subject": "self",
+                "value": "bad_omen"
+              },
+              {
+                "test": "is_in_village",
+                "subject": "self",
+                "value": true
+              }
+            ]
+          },
+          "event": "minecraft:gain_raid_omen"
         }
       },
       "minecraft:damage_sensor": {
@@ -666,30 +673,42 @@
     "events": {
       "minecraft:gain_raid_omen": {
         "add": {
-          "component_groups": ["minecraft:add_raid_omen"]
+          "component_groups": [
+            "minecraft:add_raid_omen"
+          ]
         }
       },
       "minecraft:clear_add_raid_omen": {
         "remove": {
-          "component_groups": ["minecraft:add_raid_omen"]
+          "component_groups": [
+            "minecraft:add_raid_omen"
+          ]
         },
         "add": {
-          "component_groups": ["minecraft:clear_raid_omen_spell_effect"]
+          "component_groups": [
+            "minecraft:clear_raid_omen_spell_effect"
+          ]
         }
       },
       "minecraft:trigger_raid": {
         "add": {
-          "component_groups": ["minecraft:raid_trigger"]
+          "component_groups": [
+            "minecraft:raid_trigger"
+          ]
         }
       },
       "minecraft:remove_raid_trigger": {
         "remove": {
-          "component_groups": ["minecraft:raid_trigger"]
+          "component_groups": [
+            "minecraft:raid_trigger"
+          ]
         }
       },
       "ws:tempkick": {
         "add": {
-          "component_groups": ["ws:tempkick"]
+          "component_groups": [
+            "ws:tempkick"
+          ]
         }
       }
     }

@@ -16,8 +16,9 @@ export function registerDuelCommand(handler: Handler, moduleName: string) {
             "duel r <プレイヤー名> [マップ名]\n" +
             "duel a <プレイヤー名>\n" +
             "duel leave (退出)\n" +
-            "duel kit <キット名> <x1> <y1> <z1> [x2] [y2] [z2]",
-        execute: (_message, event,args) => {
+            "duel kit <キット名> <x1> <y1> <z1> [x2] [y2] [z2]\n" +
+            "duel give <キット名>",
+        execute: (_message, event, args) => {
             const player = event.sourceEntity;
             const subCommand = args[0] ? args[0].toLowerCase() : "";
 
@@ -200,6 +201,26 @@ export function registerDuelCommand(handler: Handler, moduleName: string) {
                         }
                     }
                     break;
+                case "give": {
+                    // "duel give <キット名>"
+                    if (args.length !== 2) {
+                        const errorMessage = "§c使用法: duel give <キット名>";
+                        if (player instanceof Player) {
+                            player.sendMessage(errorMessage);
+                        } else {
+                            console.warn(errorMessage);
+                        }
+                        return;
+                    }
+                    if (!(player instanceof Player)) {
+                        console.warn("このコマンドはプレイヤーのみが使用できます。");
+                        return;
+                    }
+
+                    const kitName = args[1];
+                    duelManager.giveKitByName(player, kitName);
+                    break;
+                }
 
                 default:
                     if (player instanceof Player) {

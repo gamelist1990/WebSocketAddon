@@ -1,10 +1,12 @@
-
-
 import { system, world, } from '@minecraft/server';
 import { ver } from './plugins/ScoreModule/main';
 
 
 const startTime = Date.now();
+
+if (!system || !world) {
+    console.error("Script Error: @minecraft/server module failed to load.  Ensure you have experimental gameplay enabled and are using a compatible Minecraft version");
+}
 
 
 async function loadAllImports() {
@@ -16,25 +18,29 @@ async function loadAllImports() {
     }
 }
 
-//reload コマンド待機用
-system.run(() => {
-    main();
-})
-//ワールドの初期化処理
+
+if (system) {
+    system.run(() => {
+        main();
+    });
+}
+
 
 async function main() {
-    system.runTimeout(async () => {
-        try {
-            await loadAllImports();
-        } catch (error) {
-            console.warn(`Error loading data: ${(error as Error).message}`);
-        }
+    if (system && world) {
+        system.runTimeout(async () => {
+            try {
+                await loadAllImports();
+            } catch (error) {
+                console.warn(`Error loading data: ${(error as Error).message}`);
+            }
 
-        const endTime = Date.now();
-        const loadTime = endTime - startTime;
+            const endTime = Date.now();
+            const loadTime = endTime - startTime;
 
-        world.sendMessage(`§f[§bServer§f]§l§aWebSocketAddon§6v${ver}§aのデータの更新が ${loadTime} msで完了しました`)
+            world.sendMessage(`§f[§bServer§f]§l§aWebSocketAddon§6v${ver}§aのデータの更新が ${loadTime} msで完了しました`)
 
 
-    }, 1)
+        }, 1);
+    }
 }

@@ -1,5 +1,6 @@
 import { Player, system } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
+import { transferPlayer } from '@minecraft/server-admin';
 
 
 

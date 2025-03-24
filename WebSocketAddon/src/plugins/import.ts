@@ -5,6 +5,7 @@ import "./chatEvent/index";
 import "./itemEvent/index";
 import "./JoinEvent/index";
 import "./ViewEvent/index";
+//import "./lagEvent/index";
 
 
 // ===== モジュール (Module) =====
