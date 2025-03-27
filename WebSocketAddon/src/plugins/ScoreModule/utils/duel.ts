@@ -633,15 +633,15 @@ export class DuelManager {
         const countdownInterval = system.runInterval(() => {
             this.teleportPlayer(player1, duelConfig.pos1, dimension);
             this.teleportPlayer(player2, duelConfig.pos2, dimension);
-            system.run(()=>{
+            system.run(() => {
                 player1.runCommand(`effect @s instant_health 1 255 true`);
                 player2.runCommand(`effect @s instant_health 1 255 true`);
                 player1.runCommand(`effect @s saturation 5 255 true`);
                 player2.runCommand(`effect @s saturation 5 255 true`);
-                system.runTimeout(()=>{
+                system.runTimeout(() => {
                     player1.runCommand(`effect @s clear`);
                     player2.runCommand(`effect @s clear`);
-                },20)
+                }, 20)
             })
 
             if (countdown > 0) {
@@ -722,7 +722,7 @@ export class DuelManager {
                     y: winner.location.y + offset.y,
                     z: winner.location.z + offset.z,
                 }
-                winner.runCommandAsync(`/summon fireworks_rocket ${spawnLocation.x} ${spawnLocation.y} ${spawnLocation.z}`)
+                system.run(() => winner.runCommand(`/summon fireworks_rocket ${spawnLocation.x} ${spawnLocation.y} ${spawnLocation.z}`))
             }
         }, 10)
         run

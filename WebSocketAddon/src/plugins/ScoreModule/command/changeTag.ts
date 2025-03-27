@@ -166,12 +166,7 @@ export function registerChangeTag2Command(handler: Handler, moduleName: string) 
         command = command.replaceAll("{player}", player.name);
 
         try {
-            player.runCommandAsync(command)
-                .then(_result => { })
-                .catch(error => {
-                    console.warn(`コマンド実行中に例外: ${error} \n ${command}`);
-
-                });
+            player.runCommand(command)
         } catch (error) {
             console.warn(`コマンド実行中にエラー（同期）: ${error} \n ${command}`);
 

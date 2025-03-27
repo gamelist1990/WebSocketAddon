@@ -34,11 +34,11 @@ class AttackModule implements Module {
 §r- ブロックに当たった矢: §9w:hit_block\n
 §r- 当たったブロック: §9w:hit_block_<ブロックID>\n
 §r- エンティティに当たった矢: §9w:hit_entity\n
-§r- 当たったエンティティのアイテム: §9w:hit_entity_<アイテムID>\n`;
+§r- 当たったエンティティのタイプ: §9w:hit_entity_<タイプID>\n`;
 
 
     private playerAttackMap = new Map<string, string>(); // 攻撃者と被攻撃者のマッピング
-    private tagTimeout = 40; // タグの有効時間 (tick)
+    private tagTimeout = 1; // タグの有効時間 (tick)
 
     private cachedPlayers: Player[] = []; // プレイヤーリストのキャッシュ
     private killCountDb: Database;
@@ -49,6 +49,7 @@ class AttackModule implements Module {
     private static readonly DEAD_TAG = 'w:dead';
     private static readonly ATTACK_TAG = 'w:attack';
     private static readonly DAMAGED_TAG = 'w:damaged';
+    private static readonly DAMAGED_TAG_CAUSE = 'w:damaged_';
     private static readonly ATTACK_ITEM_TAG = 'w:attack_';
     private static readonly HIT_BLOCK_TAG = 'w:hit_block';
     private static readonly HIT_BLOCK_ID_TAG = 'w:hit_block_';
@@ -107,6 +108,9 @@ class AttackModule implements Module {
 
         hurtEntity.addTag(AttackModule.DAMAGED_TAG);
         this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG, this.tagTimeout);
+
+        hurtEntity.addTag(AttackModule.DAMAGED_TAG_CAUSE + damageSource.cause);
+        this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG_CAUSE, this.tagTimeout);
 
         // 攻撃者がプレイヤーである場合のみ処理
         if (attacker instanceof Player) {
@@ -167,6 +171,11 @@ class AttackModule implements Module {
         this.addDeathCauseTag(deadEntity, cause);
         system.run(() => {
             deadEntity.addTag(`${AttackModule.DEAD_TAG}`);
+
+            system.runTimeout(() => {
+                deadEntity.removeTag(`${AttackModule.DEAD_TAG}`);
+            }, 1)
+
         })
         this.incrementDeathCount(deadEntity);
 
@@ -299,7 +308,7 @@ class AttackModule implements Module {
 
         system.runTimeout(() => {
             player.removeTag(`w:dead_case_${cause}`)
-        }, 40)
+        }, 1)
     }
 
 

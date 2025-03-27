@@ -4,9 +4,7 @@ import {
     system,
     ItemStack,
     ItemUseAfterEvent,
-    ItemUseOnAfterEvent,
     ItemUseBeforeEvent,
-    ItemUseOnBeforeEvent,
     PlayerInteractWithBlockBeforeEvent,
     PlayerInteractWithEntityBeforeEvent
 } from '@minecraft/server';
@@ -34,9 +32,7 @@ class ItemEventModule implements Module {
 `;
 
     private readonly ITEM_USE_TAG_PREFIX = 'w:item_use_';
-    private readonly ITEM_USE_ON_TAG_PREFIX = 'w:item_useOn_';
     private readonly ITEM_USE_CANCEL_TAG = 'w:item_use_cancel';
-    private readonly ITEM_USE_ON_CANCEL_TAG = 'w:item_useOn_cancel';
     private readonly TOUCH_BLOCK_TAG_PREFIX = 'w:touch_block_';
     private readonly TOUCH_ENTITY_TAG_PREFIX = 'w:touch_entity_';
     private readonly TOUCH_BLOCK_CANCEL_TAG = 'w:touch_block_cancel';
@@ -58,18 +54,14 @@ class ItemEventModule implements Module {
 
     private registerEventListeners(): void {
         world.afterEvents.itemUse.subscribe(this.handleItemUse);
-        world.afterEvents.itemUseOn.subscribe(this.handleItemUseOn);
         world.beforeEvents.itemUse.subscribe(this.handleItemUseBefore);
-        world.beforeEvents.itemUseOn.subscribe(this.handleItemUseOnBefore);
         world.beforeEvents.playerInteractWithBlock.subscribe(this.handlePlayerInteractWithBlock);
         world.beforeEvents.playerInteractWithEntity.subscribe(this.handlePlayerInteractWithEntity);
     }
 
     private unregisterEventListeners(): void {
         world.afterEvents.itemUse.unsubscribe(this.handleItemUse);
-        world.afterEvents.itemUseOn.unsubscribe(this.handleItemUseOn);
         world.beforeEvents.itemUse.unsubscribe(this.handleItemUseBefore);
-        world.beforeEvents.itemUseOn.unsubscribe(this.handleItemUseOnBefore);
         world.beforeEvents.playerInteractWithBlock.unsubscribe(this.handlePlayerInteractWithBlock);
         world.beforeEvents.playerInteractWithEntity.unsubscribe(this.handlePlayerInteractWithEntity);
     }
@@ -83,12 +75,6 @@ class ItemEventModule implements Module {
 
     };
 
-    private handleItemUseOn = (event: ItemUseOnAfterEvent) => {
-        const player = event.source;
-        if (!(player instanceof Player)) return;
-        const itemStack = event.itemStack;
-        this.addItemUseOnTag(player, itemStack);
-    };
 
     private handleItemUseBefore = (event: ItemUseBeforeEvent) => {
         const player = event.source;
@@ -98,14 +84,6 @@ class ItemEventModule implements Module {
         }
     };
 
-    private handleItemUseOnBefore = (event: ItemUseOnBeforeEvent) => {
-        const player = event.source;
-        if (!(player instanceof Player)) return;
-
-        if (player.hasTag(this.ITEM_USE_ON_CANCEL_TAG)) {
-            event.cancel = true;
-        }
-    };
 
 
     // アイテム使用タグを追加 (itemUse 用)
@@ -115,13 +93,6 @@ class ItemEventModule implements Module {
         this.addTagWithTimeout(player, tag, this.tagTimeout);
     }
 
-    // アイテム使用タグを追加 (itemUseOn 用)
-    private addItemUseOnTag(player: Player, itemStack: ItemStack): void {
-        const itemId = itemStack.typeId;
-
-        const tag = `${this.ITEM_USE_ON_TAG_PREFIX}${itemId}`;
-        this.addTagWithTimeout(player, tag, this.tagTimeout);
-    }
     private handlePlayerInteractWithBlock = (event: PlayerInteractWithBlockBeforeEvent) => {
         const player = event.player;
         if (player.hasTag(this.TOUCH_BLOCK_CANCEL_TAG)) {
@@ -157,3 +128,4 @@ class ItemEventModule implements Module {
 
 const itemEventModule = new ItemEventModule();
 moduleManager.registerModule(itemEventModule);
+

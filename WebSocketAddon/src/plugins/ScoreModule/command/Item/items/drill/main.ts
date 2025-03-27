@@ -118,11 +118,7 @@ function runDrillAction(player: Player, drillItem: CustomItem, options: DrillOpt
                         playBreakEffects(roundedLocation);
 
                         // /fill コマンドで空気ブロックを配置 (destroy オプション付き)
-                        dimension.runCommandAsync(`fill ${blockX} ${blockY} ${blockZ} ${blockX} ${blockY} ${blockZ} air destroy`)
-                            .catch(error => {
-                                // コマンド実行エラー処理 (例: ログ出力)
-                                console.error("fill command failed:", error);
-                            });
+                        system.run(() => dimension.runCommand(`fill ${blockX} ${blockY} ${blockZ} ${blockX} ${blockY} ${blockZ} air destroy`))
                     }
                 }
             }

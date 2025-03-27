@@ -20,6 +20,7 @@ import { registerItemCommand } from './command/Item/custom';
 import { registerTransfer } from './command/transfer';
 import { registerAutoArmorCommand } from './command/arrmor';
 import { registerDuelCommand } from './command/duel';
+import { registerRankCommands } from './utils/rankModule';
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -150,6 +151,8 @@ class ScoreModule implements Module {
     registerTransfer(handler, this.name);
     registerAutoArmorCommand(handler,this.name)
     registerDuelCommand(handler,this.name)
+    //New
+    registerRankCommands(handler, this.name);
   }
 
 }

@@ -69,7 +69,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                 //   consoleOutput(`チーム人数が同数のため、コマンド「${sameCommand}」を実行します。`);
                                 system.run(() => {
                                     try {
-                                        world.getDimension('overworld').runCommandAsync(sameCommand);
+                                        system.run(() => { world.getDimension('overworld').runCommand(sameCommand); })
                                     } catch (commandError) {
                                         consoleOutput(`コマンド実行中にエラーが発生しました: ${commandError}`);
                                     }
@@ -84,7 +84,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                 // consoleOutput(`チーム ${winningTeam} の人数が最も多いため、コマンド「${command}」を実行します。`);
                                 system.run(() => {
                                     try {
-                                        world.getDimension('overworld').runCommandAsync(command);
+                                        system.run(() => world.getDimension('overworld').runCommand(command))
                                     } catch (commandError) {
                                         consoleOutput(`コマンド実行中にエラーが発生しました: ${commandError}`);
                                     }
@@ -116,7 +116,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                     // consoleOutput(`最後のチーム ${winningTeam} が残ったため、コマンド「${command}」を実行します。`);
                                     system.run(() => {
                                         try {
-                                            world.getDimension('overworld').runCommandAsync(command);
+                                            system.run(() => world.getDimension('overworld').runCommand(command))
                                         } catch (commandError) {
                                             consoleOutput(`コマンド実行中にエラーが発生しました: ${commandError}`);
                                         }
@@ -139,7 +139,7 @@ export function registerTeamCountCommand(handler: Handler, moduleName: string) {
                                         //    consoleOutput(`チーム ${teamTag} の人数が0になったため、コマンド「${command}」を実行します。`);
                                         system.run(() => {
                                             try {
-                                                world.getDimension('overworld').runCommandAsync(command);
+                                                system.run(() => world.getDimension('overworld').runCommand(command));
                                             } catch (commandError) {
                                                 consoleOutput(`コマンド実行中にエラーが発生しました: ${commandError}`);
                                             }

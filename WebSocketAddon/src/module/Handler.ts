@@ -46,6 +46,7 @@ export class Handler {
         } else {
             commandId = id;
         }
+        
 
         if (this.commandHandlers[commandId]) {
             const args = message.trim().split(/\s+/); // メッセージを引数に分割

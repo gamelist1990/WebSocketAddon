@@ -77,15 +77,9 @@ export function registerCloneBlockCommand(handler: Handler, moduleName: string) 
                     // /clone コマンド()
                     const cloneCommand = `clone ${from.x} ${from.y} ${from.z} ${from.x} ${from.y} ${from.z} ${to.x} ${to.y} ${to.z} replace`;
                     try {
-                        dimension.runCommandAsync(cloneCommand)
-                            .then(result => {
-                                if (result.successCount === 0) {
-                                }
-                            })
-                            .catch(error => {
-                                consoleOutput(`クローンコマンド実行中に例外: ${error}`);
-                                sendMessage(`クローンコマンド実行中に例外: ${error}`);
-                            });
+                        system.run(()=>{
+                            dimension.runCommand(cloneCommand);
+                        })
                     } catch (error) {
                         consoleOutput(`クローンコマンド実行中にエラー（同期）: ${error}`);
                         sendMessage(`クローンコマンド実行中にエラー（同期）: ${error}`);
