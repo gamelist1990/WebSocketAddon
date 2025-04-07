@@ -64,7 +64,7 @@ export class Handler {
             moduleName: "ModuleEditer",
             description: "Helpコマンド help コマンド名でその説明を見れます",
             usage: "help <page|commandName>",
-            execute: (_message, event, args) => { // message, event 引数をオプションに
+            execute: (_message, event, args) => {
                 if (!event) return;
 
                 if (args.length === 0 || (args.length === 1 && args[0] === "")) {

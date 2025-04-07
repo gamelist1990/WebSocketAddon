@@ -121,7 +121,7 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
 
                 const replaceBlockSet = randomBlockData.replaceBlock ? new Set(randomBlockData.replaceBlock) : null;
 
-                const maxBlocksPerTick = 500;
+                const maxBlocksPerTick = 600;
                 let currentBlockIndex = 0;  
 
                 const volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);

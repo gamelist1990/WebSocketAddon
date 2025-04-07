@@ -117,8 +117,8 @@ const barrierItem = new CustomItem({
                 // プレイヤーにはノックバックを適用
                 const player = entity as Player;
                 const horizontalForce: VectorXZ = {
-                    x: normalizedDirection.x * 2,
-                    z: normalizedDirection.z * 2
+                    x: normalizedDirection.x * 5,
+                    z: normalizedDirection.z * 5
                 };
                 //@ts-ignore
                 player.applyKnockback(

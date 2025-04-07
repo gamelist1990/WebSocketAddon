@@ -4,3 +4,8 @@ import './gun1/main'
 import './stick/main'
 import './drill/main'
 import './barrier/main'
+import './console/main'
+import './Turret/main'
+import './boosts2/main'
+import './fireball/main'
+

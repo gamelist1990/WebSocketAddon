@@ -2,7 +2,6 @@ import {
     EntityInventoryComponent,
     EntityDamageCause,
     EntityDamageSource,
-    ItemStack,
     world,
     Player,
     Entity,
@@ -10,7 +9,7 @@ import {
     EntityHurtAfterEvent,
     EntityDieAfterEvent,
     ProjectileHitBlockAfterEvent,
-    ProjectileHitEntityAfterEvent, // Import ProjectileHitEntityAfterEvent
+    ProjectileHitEntityAfterEvent,
 } from '@minecraft/server';
 import { Module, moduleManager } from '../../module/module';
 import { Database } from '../../module/DataBase';
@@ -18,44 +17,65 @@ import { Database } from '../../module/DataBase';
 class AttackModule implements Module {
     name = 'Attack_Manager';
     enabledByDefault = true;
-    docs = `プレイヤーの攻撃/キル/死亡/被ダメージを記録します。\n
+    docs = `プレイヤーの攻撃/キル/死亡/被ダメージ/投擲物のヒットを記録します。\n
 **データ**\n
 §r- キル数: §9ws_attack_kill_counts\n
 §r- 死亡数: §9ws_attack_death_counts\n
 §r- 攻撃数: §9ws_attack_counts\n
 \n
-**タグ**\n
+**タグ (発射者/攻撃者 - Attacker)**\n
 §r- キル: §9w:kill\n
-§r- 死亡: §9w:dead\n
 §r- 攻撃: §9w:attack\n
-§r- 被ダメージ: §9w:damaged\n
 §r- 攻撃アイテム: §9w:attack_<アイテムID>\n
+§r- 投擲物がエンティティにヒット: §9w:hit_entity\n
+§r- ヒットしたエンティティタイプ: §9w:hit_entity_<タイプID>\n
+§r- 投擲物がブロックにヒット: §9w:hit_block\n
+§r- ヒットしたブロックID: §9w:hit_block_<ブロックID>\n
+\n
+**タグ (被ダメージ者/被弾エンティティ - Damaged/Hit Entity)**\n
+§r- 死亡: §9w:dead\n
 §r- 死亡原因: §9w:dead_case_<原因>\n
-§r- ブロックに当たった矢: §9w:hit_block\n
-§r- 当たったブロック: §9w:hit_block_<ブロックID>\n
-§r- エンティティに当たった矢: §9w:hit_entity\n
-§r- 当たったエンティティのタイプ: §9w:hit_entity_<タイプID>\n`;
+§r- 被ダメージ: §9w:damaged\n
+§r- 被ダメージ原因: §9w:damaged_<原因>\n
+§r- 投擲物がヒット: §9w:d_hit_entity\n
+§r- ヒットしたエンティティタイプ(被弾側): §9w:d_hit_entity_<タイプID>\n
+\n
+**タグ (投擲物 - Projectile)**\n
+§r- エンティティにヒット: §9w:a_hit_entity\n
+§r- ヒットしたエンティティタイプ(投擲物側): §9w:a_hit_entity_<タイプID>\n
+§r- ブロックにヒット: §9w:a_hit_block\n
+§r- ヒットしたブロックID(投擲物側): §9w:a_hit_block_<ブロックID>\n`;
 
+    private playerAttackMap = new Map<string, string>();
+    private tagTimeout = 1;
 
-    private playerAttackMap = new Map<string, string>(); // 攻撃者と被攻撃者のマッピング
-    private tagTimeout = 1; // タグの有効時間 (tick)
-
-    private cachedPlayers: Player[] = []; // プレイヤーリストのキャッシュ
+    private cachedPlayers: Player[] = [];
     private killCountDb: Database;
     private deathCountDb: Database;
     private attackCountDb: Database;
 
     private static readonly KILL_TAG = 'w:kill';
     private static readonly DEAD_TAG = 'w:dead';
+    private static readonly DIE_TAG = 'w:die';
     private static readonly ATTACK_TAG = 'w:attack';
     private static readonly DAMAGED_TAG = 'w:damaged';
-    private static readonly DAMAGED_TAG_CAUSE = 'w:damaged_';
     private static readonly ATTACK_ITEM_TAG = 'w:attack_';
-    private static readonly HIT_BLOCK_TAG = 'w:hit_block';
-    private static readonly HIT_BLOCK_ID_TAG = 'w:hit_block_';
-    private static readonly HIT_ENTITY_TAG = 'w:hit_entity'; // Add hit entity tag
-    private static readonly HIT_ENTITY_ITEM_TAG = 'w:hit_entity_'; // Add hit entity item tag
 
+    private static readonly DAMAGED_CAUSE_TAG_PREFIX = 'w:damaged_';
+    private static readonly DEAD_CAUSE_TAG_PREFIX = 'w:dead_case_';
+
+    private static readonly SOURCE_HIT_BLOCK_TAG = 'w:hit_block';
+    private static readonly SOURCE_HIT_BLOCK_ID_TAG_PREFIX = 'w:hit_block_';
+    private static readonly SOURCE_HIT_ENTITY_TAG = 'w:hit_entity';
+    private static readonly SOURCE_HIT_ENTITY_TYPE_TAG_PREFIX = 'w:hit_entity_';
+
+    private static readonly PROJECTILE_HIT_BLOCK_TAG = 'w:a_hit_block';
+    private static readonly PROJECTILE_HIT_BLOCK_ID_TAG_PREFIX = 'w:a_hit_block_';
+    private static readonly PROJECTILE_HIT_ENTITY_TAG = 'w:a_hit_entity';
+    private static readonly PROJECTILE_HIT_ENTITY_TYPE_TAG_PREFIX = 'w:a_hit_entity_';
+
+    private static readonly DAMAGED_HIT_ENTITY_TAG = 'w:d_hit_entity';
+    private static readonly DAMAGED_HIT_ENTITY_TYPE_TAG_PREFIX = 'w:d_hit_entity_';
 
     constructor() {
         this.killCountDb = Database.create('ws_attack_kill_counts');
@@ -70,7 +90,6 @@ class AttackModule implements Module {
     onInitialize(): void {
         this.cachePlayers();
         this.registerEventListeners();
-
     }
 
     onDisable(): void {
@@ -83,25 +102,22 @@ class AttackModule implements Module {
         world.afterEvents.entityHurt.subscribe(this.handleEntityHurt);
         world.afterEvents.entityDie.subscribe(this.handleEntityDie);
         world.afterEvents.projectileHitBlock.subscribe(this.handleProjectileHitBlock);
-        world.afterEvents.projectileHitEntity.subscribe(this.handleProjectileHitEntity); // Subscribe to projectileHitEntity
+        world.afterEvents.projectileHitEntity.subscribe(this.handleProjectileHitEntity);
     }
 
     private unregisterEventListeners(): void {
-        world.afterEvents.entityHurt.unsubscribe(this.handleEntityHurt);
-        world.afterEvents.entityDie.unsubscribe(this.handleEntityDie);
         world.afterEvents.playerSpawn.unsubscribe(() => this.cachePlayers());
         world.afterEvents.playerLeave.unsubscribe(() => this.cachePlayers());
+        world.afterEvents.entityHurt.unsubscribe(this.handleEntityHurt);
+        world.afterEvents.entityDie.unsubscribe(this.handleEntityDie);
         world.afterEvents.projectileHitBlock.unsubscribe(this.handleProjectileHitBlock);
-        world.afterEvents.projectileHitEntity.unsubscribe(this.handleProjectileHitEntity); // Unsubscribe projectileHitEntity
+        world.afterEvents.projectileHitEntity.unsubscribe(this.handleProjectileHitEntity);
     }
 
     private cachePlayers(): void {
         this.cachedPlayers = Array.from(world.getAllPlayers());
     }
 
-    /**
-     * エンティティがダメージを受けたときの処理
-     */
     private handleEntityHurt = (event: EntityHurtAfterEvent) => {
         const { hurtEntity, damageSource } = event;
         const attacker = this.getDamagingEntity(damageSource);
@@ -109,254 +125,170 @@ class AttackModule implements Module {
         hurtEntity.addTag(AttackModule.DAMAGED_TAG);
         this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG, this.tagTimeout);
 
-        hurtEntity.addTag(AttackModule.DAMAGED_TAG_CAUSE + damageSource.cause);
-        this.removeTagWithTimeout(hurtEntity, AttackModule.DAMAGED_TAG_CAUSE, this.tagTimeout);
+        const damagedCauseTag = `${AttackModule.DAMAGED_CAUSE_TAG_PREFIX}${damageSource.cause}`;
+        hurtEntity.addTag(damagedCauseTag);
+        this.removeTagWithTimeout(hurtEntity, damagedCauseTag, this.tagTimeout);
 
-        // 攻撃者がプレイヤーである場合のみ処理
         if (attacker instanceof Player) {
             this.playerAttackMap.set(hurtEntity.id, attacker.id);
             this.incrementAttackCount(attacker);
+
             attacker.addTag(AttackModule.ATTACK_TAG);
             this.removeTagWithTimeout(attacker, AttackModule.ATTACK_TAG, this.tagTimeout);
 
-            // 攻撃アイテムのタグを追加
             const inventory = attacker.getComponent('inventory') as EntityInventoryComponent;
-            if (inventory && inventory.container) {
-                const itemStack = inventory.container.getItem(
-                    attacker.selectedSlotIndex
-                );
-                if (itemStack) {
-                    this.addAttackItemTag(attacker, itemStack);
-                }
+            const itemStack = inventory?.container?.getItem(attacker.selectedSlotIndex);
+            if (itemStack) {
+                const itemTag = `${AttackModule.ATTACK_ITEM_TAG}${itemStack.typeId}`;
+                attacker.addTag(itemTag);
+                this.removeTagWithTimeout(attacker, itemTag, this.tagTimeout);
             }
         }
-
-
     };
 
-    /**
-     * 攻撃アイテムのタグを追加する
-     */
-    private addAttackItemTag(attacker: Player, itemStack: ItemStack): void {
-        const tag = `${AttackModule.ATTACK_ITEM_TAG}${itemStack.typeId}`;
-
-        attacker.addTag(tag);
-        this.removeTagWithTimeout(attacker, tag, this.tagTimeout); //タグは上書きではなく、時間経過で消えるようにする
-    }
-
-    /**
-     * 指定したタグを一定時間後に削除する
-     */
-    private removeTagWithTimeout(entity: Entity, tag: string, timeout: number): void {
+    private removeTagWithTimeout(entity: Entity | undefined, tag: string, timeout: number): void {
+        if (!entity) return;
         system.runTimeout(() => {
             try {
-                if (entity.hasTag(tag)) {
+                if (entity.isValid && entity.hasTag(tag)) {
                     entity.removeTag(tag);
                 }
             } catch (error) {
-
             }
         }, timeout);
     }
 
-    /**
-     * エンティティが死亡したときの処理
-     */
     private handleEntityDie = (event: EntityDieAfterEvent) => {
         const { deadEntity, damageSource } = event;
 
         if (!(deadEntity instanceof Player)) return;
+
+        deadEntity.addTag(AttackModule.DIE_TAG);
+        this.removeTagWithTimeout(deadEntity, AttackModule.DIE_TAG, this.tagTimeout);
+
         const { cause } = damageSource;
+        const deadCauseTag = `${AttackModule.DEAD_CAUSE_TAG_PREFIX}${cause}`;
+        deadEntity.addTag(deadCauseTag);
+        this.removeTagWithTimeout(deadEntity, deadCauseTag, this.tagTimeout);
 
-        this.addDeathCauseTag(deadEntity, cause);
-        system.run(() => {
-            deadEntity.addTag(`${AttackModule.DEAD_TAG}`);
-
-            system.runTimeout(() => {
-                deadEntity.removeTag(`${AttackModule.DEAD_TAG}`);
-            }, 1)
-
-        })
         this.incrementDeathCount(deadEntity);
 
         //@ts-ignore
         if (cause === EntityDamageCause.suicide) {
             this.playerAttackMap.delete(deadEntity.id);
-            this.removeTags(deadEntity, cause);
             return;
         }
 
         const lastAttackerId = this.playerAttackMap.get(deadEntity.id);
-        if (!lastAttackerId || lastAttackerId === deadEntity.id) {
-            this.removeTags(deadEntity, cause);
-            this.playerAttackMap.delete(deadEntity.id);
-            return;
-        }
-        const lastAttacker = this.cachedPlayers.find((p) => p.id === lastAttackerId);
-
-        if (!lastAttacker) {
-            this.removeTags(deadEntity, cause);
-            this.playerAttackMap.delete(deadEntity.id);
-            return;
-        }
-
-        this.onPlayerKill(lastAttacker, deadEntity);
-        this.removeTags(deadEntity, cause);
         this.playerAttackMap.delete(deadEntity.id);
+
+        if (!lastAttackerId || lastAttackerId === deadEntity.id) {
+            return;
+        }
+
+        const killer = this.cachedPlayers.find((p) => p.id === lastAttackerId);
+
+        if (killer) {
+            this.onPlayerKill(killer, deadEntity);
+        }
+
     };
 
-    /**
-     * ダメージソースから攻撃エンティティを取得
-     */
     private getDamagingEntity(damageSource: EntityDamageSource): Entity | undefined {
-        let attacker: Entity | undefined = damageSource.damagingEntity;
-        if (!attacker && damageSource.damagingProjectile) {
-            attacker = damageSource.damagingProjectile;
+        if (damageSource.damagingEntity) {
+            return damageSource.damagingEntity;
         }
-        return attacker;
+        if (damageSource.damagingProjectile) {
+            return damageSource.damagingProjectile;
+        }
+        return undefined;
     }
 
-    /**
-     * プレイヤーがキルを達成したときの処理 (カスタマイズ可能)
-     */
-    private async onPlayerKill(attacker: Player, _victim: Player): Promise<void> {
-        this.applyKillTags(attacker);
-        this.removeKillTagsWithTimeout(attacker, this.tagTimeout);
-
-        await this.incrementKillCount(attacker);
+    private async onPlayerKill(killer: Player, dead: Player): Promise<void> {
+        dead.addTag(AttackModule.DEAD_TAG);
+        killer.addTag(AttackModule.KILL_TAG);
+        this.removeTagWithTimeout(killer, AttackModule.KILL_TAG, this.tagTimeout);
+        this.removeTagWithTimeout(dead, AttackModule.DEAD_TAG, this.tagTimeout);
+        await this.incrementKillCount(killer);
     }
-    /**
-  * Kill Count を増やす (DB)
-  */
+
     private async incrementKillCount(player: Player): Promise<void> {
         const currentKillCount = (await this.killCountDb.get(player)) ?? 0;
-        const newKillCount = currentKillCount + 1;
-        await this.killCountDb.set(player, newKillCount);
+        await this.killCountDb.set(player, currentKillCount + 1);
     }
 
-    /**
-     * Death Count を増やす (DB)
-     */
     private async incrementDeathCount(player: Player): Promise<void> {
         const currentDeathCount = (await this.deathCountDb.get(player)) ?? 0;
-        const newDeathCount = currentDeathCount + 1;
-        await this.deathCountDb.set(player, newDeathCount); // Player オブジェクトをキーとして使用
+        await this.deathCountDb.set(player, currentDeathCount + 1);
     }
 
-    /**
-     * 殴打カウントを増やす (DB)
-     */
     private async incrementAttackCount(player: Player): Promise<void> {
         const currentAttackCount = (await this.attackCountDb.get(player)) ?? 0;
-        const newAttackCount = currentAttackCount + 1;
-        await this.attackCountDb.set(player, newAttackCount);
+        await this.attackCountDb.set(player, currentAttackCount + 1);
     }
 
-
-    /**
-     * キルタグを付与
-     */
-    private applyKillTags(attacker: Player): void {
-        attacker.addTag(AttackModule.KILL_TAG);
-    }
-
-    /**
-     * 一定時間後にキルタグを削除
-     */
-    private removeKillTagsWithTimeout(attacker: Player, timeout: number): void {
-        system.runTimeout(() => {
-            if (attacker.hasTag(AttackModule.KILL_TAG)) {
-                attacker.removeTag(AttackModule.KILL_TAG);
-            }
-        }, timeout);
-    }
-
-    /**
-     * 死亡したプレイヤーのタグを削除
-     * w:dead は残す
-     */
-    private removeTags(deadPlayer: Player, cause: EntityDamageCause): void {
-        if (deadPlayer.hasTag(`w:dead_case_${cause}`)) {
-            deadPlayer.removeTag(`w:dead_case_${cause}`);
-        }
-        if (deadPlayer.hasTag(AttackModule.DEAD_TAG)) {
-            deadPlayer.removeTag(AttackModule.DEAD_TAG);
-        }
-        if (deadPlayer.hasTag(AttackModule.KILL_TAG)) {
-            deadPlayer.removeTag(AttackModule.KILL_TAG);
-        }
-        if (deadPlayer.hasTag(AttackModule.ATTACK_TAG)) {
-            deadPlayer.removeTag(AttackModule.ATTACK_TAG);
-        }
-        if (deadPlayer.hasTag(AttackModule.DAMAGED_TAG)) {
-            deadPlayer.removeTag(AttackModule.DAMAGED_TAG);
-        }
-        //他のタグを消すときに、攻撃アイテムのタグも消えてしまわないように、startsWidthで検索
-        for (const tag of deadPlayer.getTags()) {
-            if (tag.startsWith(AttackModule.ATTACK_ITEM_TAG)) {
-                deadPlayer.removeTag(tag);
-            }
-        }
-    }
-    /**
-     * 死亡原因に基づいたタグを追加する
-     */
-    private addDeathCauseTag(player: Player, cause: EntityDamageCause): void {
-        system.run(() => {
-            player.addTag(`w:dead_case_${cause}`);
-        })
-
-        system.runTimeout(() => {
-            player.removeTag(`w:dead_case_${cause}`)
-        }, 1)
-    }
-
-
-    /**
-     * ProjectileHitBlockAfterEventのハンドラ
-     */
     private handleProjectileHitBlock = (event: ProjectileHitBlockAfterEvent) => {
-        const { source, projectile } = event;
-        const hitBlock = event.getBlockHit()?.block;
+        const { projectile, source } = event;
+        const blockHit = event.getBlockHit()?.block;
 
-        if (!(source instanceof Entity)) return;
-        if (!hitBlock) return;
+        if (!blockHit || !source) return;
+
+        const projBlockIdTag = `${AttackModule.PROJECTILE_HIT_BLOCK_ID_TAG_PREFIX}${blockHit.typeId}`;
+        const sourceBlockIdTag = `${AttackModule.SOURCE_HIT_BLOCK_ID_TAG_PREFIX}${blockHit.typeId}`;
+
+        try {
+            if (projectile.isValid) {
+                projectile.addTag(AttackModule.PROJECTILE_HIT_BLOCK_TAG);
+                this.removeTagWithTimeout(projectile, AttackModule.PROJECTILE_HIT_BLOCK_TAG, this.tagTimeout);
+
+                projectile.addTag(projBlockIdTag);
+                this.removeTagWithTimeout(projectile, projBlockIdTag, this.tagTimeout);
+            }
+        } catch (e) { }
+
+        if (source.isValid) {
+            source.addTag(AttackModule.SOURCE_HIT_BLOCK_TAG);
+            this.removeTagWithTimeout(source, AttackModule.SOURCE_HIT_BLOCK_TAG, this.tagTimeout);
+
+            source.addTag(sourceBlockIdTag);
+            this.removeTagWithTimeout(source, sourceBlockIdTag, this.tagTimeout);
+        }
+    };
+
+    private handleProjectileHitEntity = (event: ProjectileHitEntityAfterEvent) => {
+        const { projectile, source } = event;
+        const entityHit = event.getEntityHit().entity;
+
+        if (!entityHit || !source) return;
+
+        const projEntityTypeTag = `${AttackModule.PROJECTILE_HIT_ENTITY_TYPE_TAG_PREFIX}${entityHit.typeId}`;
+        const sourceEntityTypeTag = `${AttackModule.SOURCE_HIT_ENTITY_TYPE_TAG_PREFIX}${entityHit.typeId}`;
+        const damagedEntityTypeTag = `${AttackModule.DAMAGED_HIT_ENTITY_TYPE_TAG_PREFIX}${entityHit.typeId}`;
 
 
         try {
-            projectile.addTag(AttackModule.HIT_BLOCK_TAG);
-            this.removeTagWithTimeout(projectile, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
+            projectile.addTag(AttackModule.PROJECTILE_HIT_ENTITY_TAG);
+            //this.removeTagWithTimeout(projectile, AttackModule.PROJECTILE_HIT_ENTITY_TAG, this.tagTimeout);
+            projectile.addTag(projEntityTypeTag);
+            // this.removeTagWithTimeout(projectile, projEntityTypeTag, this.tagTimeout);
 
-            source.addTag(AttackModule.HIT_BLOCK_TAG);
-            this.removeTagWithTimeout(source, AttackModule.HIT_BLOCK_TAG, this.tagTimeout);
-            const blockIdTag = `${AttackModule.HIT_BLOCK_ID_TAG}${hitBlock.typeId}`;
-            source.addTag(blockIdTag);
-            this.removeTagWithTimeout(source, blockIdTag, this.tagTimeout);
+        } catch (e) { }
 
-            projectile.addTag(blockIdTag);
-            this.removeTagWithTimeout(projectile, blockIdTag, this.tagTimeout);
-        } catch (error) {
+        if (source.isValid) {
+            source.addTag(AttackModule.SOURCE_HIT_ENTITY_TAG);
+            this.removeTagWithTimeout(source, AttackModule.SOURCE_HIT_ENTITY_TAG, this.tagTimeout);
+
+            source.addTag(sourceEntityTypeTag);
+            this.removeTagWithTimeout(source, sourceEntityTypeTag, this.tagTimeout);
         }
-    };
 
-    /**
-      * ProjectileHitEntityAfterEventのハンドラ
-      */
-    private handleProjectileHitEntity = (event: ProjectileHitEntityAfterEvent) => {
-        const { source, } = event;
-        const hitEntity = event.getEntityHit()?.entity;
+        if (entityHit.isValid) {
+            entityHit.addTag(AttackModule.DAMAGED_HIT_ENTITY_TAG);
+            this.removeTagWithTimeout(entityHit, AttackModule.DAMAGED_HIT_ENTITY_TAG, this.tagTimeout);
 
-        if (!(source instanceof Player)) return;
-        if (!hitEntity) return;
-
-        source.addTag(AttackModule.HIT_ENTITY_TAG);
-        this.removeTagWithTimeout(source, AttackModule.HIT_ENTITY_TAG, this.tagTimeout);
-
-
-        // Get the entity type ID and add the tag.
-        const entityTypeIdTag = `${AttackModule.HIT_ENTITY_ITEM_TAG}${hitEntity.typeId}`;
-        source.addTag(entityTypeIdTag);
-        this.removeTagWithTimeout(source, entityTypeIdTag, this.tagTimeout);
+            entityHit.addTag(damagedEntityTypeTag);
+            this.removeTagWithTimeout(entityHit, damagedEntityTypeTag, this.tagTimeout);
+        }
     };
 }
 

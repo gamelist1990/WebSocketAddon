@@ -20,7 +20,7 @@ export enum EventType {
   BlockHit,
 }
 
-interface CustomItemEventData {
+export interface CustomItemEventData {
   itemStack: ItemStack;
   hitResult?: { entity?: Entity; block?: Block };
   eventType: EventType;
