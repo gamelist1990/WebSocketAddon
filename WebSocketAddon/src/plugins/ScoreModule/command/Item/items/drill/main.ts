@@ -138,7 +138,7 @@ function runDrillAction(player: Player, drillItem: CustomItem, options: DrillOpt
 
 const drillItem = new CustomItem({
     name: "§bドリル",
-    lore: ["§7指定方向に3x3x5のトンネルを掘る事ができるよ！"],
+    lore: ["§7指定方向に3x3x10のトンネルを掘る事ができるよ！"],
     item: "minecraft:diamond_pickaxe",
     amount: 1
 }).then((player: Player, eventData) => {

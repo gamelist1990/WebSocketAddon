@@ -16,11 +16,11 @@ const GATEWAY_ITEM_ID = "minecraft:echo_shard";
 const GATEWAY_NAME_TAG = "§5ゲートウェイ";
 const GATEWAY_LORE_START = ["§7右クリックでゲートの始点を設置"];
 const GATE_PARTICLE = "minecraft:sonic_explosion";
-const GATE_ACTIVATION_DELAY_TICKS = 1 * 20; // ★ ゲート接続開始までの遅延 (1秒)
-const GATE_DURATION_TICKS = 10 * 20; // ★ 接続完了 *後* の持続時間 (10秒)
+const GATE_ACTIVATION_DELAY_TICKS = 10; // ★ ゲート接続開始までの遅延 (1秒)
+const GATE_DURATION_TICKS = 20 * 20; // ★ 接続完了 *後* の持続時間 (10秒)
 const TELEPORT_COOLDOWN_TICKS = 1 * 20; // テレポート後のクールダウン (1秒)
-const GATE_TOUCH_DISTANCE = 2; // ゲート接触判定の半径
-const POS2_TRIGGER_DISTANCE = 15.0; // この距離を移動したらPos2を設置
+const GATE_TOUCH_DISTANCE = 3; // ゲート接触判定の半径
+const POS2_TRIGGER_DISTANCE = 30.0; // この距離を移動したらPos2を設置
 const POS2_FORCE_PLACE_TICKS = 5 * 20; // この時間経過したらPos2を強制設置 (5秒)
 const CUSTOM_ITEM_REGISTRY_ID = 19; // このアイテム固有の登録ID
 

@@ -87,22 +87,26 @@ class ViewEvent implements Module {
             if (blockHit) {
                 const { x, y, z } = blockHit.block.location;
 
-                if (this.isWithinWorldBounds(x, y, z)) {
-                    const blockTag = `w:view_block_${blockHit.block.typeId}`;
-                    if (playerData.blockTag !== blockTag) {
+                try {
+                    if (this.isWithinWorldBounds(x, y, z)) {
+                        const blockTag = `w:view_block_${blockHit.block.typeId}`;
+                        if (playerData.blockTag !== blockTag) {
+                            if (playerData.blockTag) {
+                                player.removeTag(playerData.blockTag);
+                            }
+                            player.addTag(blockTag);
+                            playerData.blockTag = blockTag;
+                        }
+                    } else {
                         if (playerData.blockTag) {
                             player.removeTag(playerData.blockTag);
+                            playerData.blockTag = undefined;
                         }
-                        player.addTag(blockTag);
-                        playerData.blockTag = blockTag;
                     }
-                } else {
-                    if (playerData.blockTag) {
-                        player.removeTag(playerData.blockTag);
-                        playerData.blockTag = undefined;
-                    }
-                }
 
+                } catch (error) {
+
+                }
 
             } else {
                 if (playerData.blockTag) {

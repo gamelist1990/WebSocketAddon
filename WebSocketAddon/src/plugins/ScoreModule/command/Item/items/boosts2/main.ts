@@ -56,6 +56,7 @@ function blinkAction(player: Player) {
                 const destinationLocation: Vector3 = player.location;
                 playerDimension.playSound("mob.endermen.portal", destinationLocation, { volume: 0.8, pitch: 1.5 });
                 player.sendMessage("§b瞬歩！ - §aランダムな地点§fへ移動した為[§b瞬歩の巻物§f]は消失した。");
+                blinkScrollItem.removeItem(player, blinkScrollItem.get())
             } catch (effectError) {
                 console.warn(`[Blink Scroll] Error playing post-teleport effects: ${effectError}`);
             }
@@ -87,15 +88,11 @@ const blinkScrollItem = new CustomItem({
     ],
     item: "minecraft:flow_banner_pattern",
     amount: 1,
-    remove: true, // teleport の成否に関わらず消費される可能性がある
 });
 
 blinkScrollItem.then((player: Player, eventData: any) => {
-    const user = eventData?.source instanceof Player ? eventData.source : player;
-    if (eventData.eventType === EventType.ItemUse && user?.isValid) {
-        // system.runは不要かもしれない (blinkAction内で非同期処理を扱っているため)
-        // ただし、他のアイテムと一貫性を保つために残しても良い
-        system.run(() => blinkAction(user));
+    if (eventData.eventType === EventType.ItemUse) {
+        system.run(() => blinkAction(player));
     }
 });
 
@@ -105,12 +102,13 @@ try {
 } catch (e) { console.error(`[Scrolls] Blink Scroll (ID ${BLINK_SCROLL_ITEM_ID}) registration failed: ${e}`); }
 
 
-// --- 爆発の巻物 (Explosion Scroll) --- (変更なし)
+// --- 爆発の巻物 (Explosion Scroll) --- 
 const EXPLOSION_RADIUS = 4;
 const EXPLOSION_BREAKS_BLOCKS = true;
-const EXPLOSION_CAUSES_FIRE = false;
+const EXPLOSION_CAUSES_FIRE = true;
 
 function explosionAction(player: Player) {
+    explosionScrollItem.removeItem(player, explosionScrollItem.get());
     const playerDimension: Dimension = player.dimension;
     const playerLocation: Vector3 = player.location;
 
@@ -122,12 +120,8 @@ function explosionAction(player: Player) {
             causesFire: EXPLOSION_CAUSES_FIRE,
             source: player // 爆発源を使用者として記録
         };
-        // 爆発を少し遅延させて音と同期させることも考慮できる
-        // system.runTimeout(() => {
         playerDimension.createExplosion(playerLocation, EXPLOSION_RADIUS, explosionOptions);
-        // 爆発成功メッセージは不要かもしれない（爆発自体がフィードバックのため）
-        // player.sendMessage("§c爆発！"); // 必要なら追加
-        // }, 5); // 例: 5 tick (0.25秒) 遅延
+       
 
     } catch (error: any) {
         player.sendMessage("§c爆発の巻物の使用に失敗しました。");
@@ -145,13 +139,11 @@ const explosionScrollItem = new CustomItem({
     ],
     item: "minecraft:flower_banner_pattern",
     amount: 1,
-    remove: true,
 });
 
 explosionScrollItem.then((player: Player, eventData: any) => {
-    const user = eventData?.source instanceof Player ? eventData.source : player;
-    if (eventData.eventType === EventType.ItemUse && user?.isValid) {
-        system.run(() => explosionAction(user));
+    if (eventData.eventType === EventType.ItemUse) {
+        system.run(() => explosionAction(player));
     }
 });
 
@@ -189,6 +181,7 @@ function guardianAction(player: Player) {
     }
 
     try {
+        guardianScrollItem.removeItem(player, guardianScrollItem.get())
         playerDimension.playSound("random.orb", playerLocation, { volume: 1.0, pitch: 0.8 });
         playerDimension.playSound("beacon.activate", playerLocation, { volume: 0.5, pitch: 1.2 });
         player.sendMessage(`§e守護の力を展開！ ${GUARDIAN_DURATION_SECONDS}秒間、周囲の敵対存在を吹き飛ばします！`);
@@ -261,6 +254,7 @@ function guardianAction(player: Player) {
                             horizontalForce, // 第一引数: VectorXZ オブジェクト
                             verticalStrength   // 第二引数: 垂直方向の強さ
                         );
+            
     
 
 
@@ -328,7 +322,6 @@ const guardianScrollItem = new CustomItem({
     ],
     item: "minecraft:guster_banner_pattern",
     amount: 1,
-    remove: true, // 使用時に消費
 });
 
 guardianScrollItem.then((player: Player, eventData: any) => {
@@ -350,6 +343,7 @@ const ASCENSION_EFFECT_AMPLIFIER = 1; // レベル2 (0から始まるため)
 const LEVITATION_EFFECT_TYPE_ID = "levitation";
 
 function ascensionAction(player: Player) {
+    ascensionScrollItem.removeItem(player, ascensionScrollItem.get())
     const playerDimension: Dimension = player.dimension;
     const playerLocation: Vector3 = player.location;
     const durationTicks = ASCENSION_EFFECT_DURATION_SECONDS * 20;
@@ -360,9 +354,7 @@ function ascensionAction(player: Player) {
             // EffectTypes.get が undefined を返す場合のエラーハンドリング
             throw new Error(`Effect type '${LEVITATION_EFFECT_TYPE_ID}' not found or unavailable.`);
         }
-
         playerDimension.playSound("mob.elytra.loop", playerLocation, { volume: 0.6, pitch: 1.4 });
-        // addEffect の amplifier は 0 がレベル 1 に対応
         player.addEffect(levitationEffect, durationTicks, { amplifier: ASCENSION_EFFECT_AMPLIFIER, showParticles: true });
         player.sendMessage(`§d浮遊！ - §f[上昇の巻物]の力で${ASCENSION_EFFECT_DURATION_SECONDS}秒間体が浮き上がる！`);
 
@@ -388,13 +380,11 @@ const ascensionScrollItem = new CustomItem({
     ],
     item: "minecraft:mojang_banner_pattern",
     amount: 1,
-    remove: true,
 });
 
 ascensionScrollItem.then((player: Player, eventData: any) => {
-    const user = eventData?.source instanceof Player ? eventData.source : player;
-    if (eventData.eventType === EventType.ItemUse && user?.isValid) {
-        system.run(() => ascensionAction(user));
+    if (eventData.eventType === EventType.ItemUse) {
+        system.run(() => ascensionAction(player));
     }
 });
 
