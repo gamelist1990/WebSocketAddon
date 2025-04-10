@@ -35,7 +35,7 @@ function getChestContainer(
             return null;
         }
         // Check if the block type actually has an inventory component
-        const containerBlocks = ['minecraft:chest', 'minecraft:barrel', 'minecraft:dispenser', 'minecraft:dropper', 'minecraft:hopper'];
+        const containerBlocks = ['minecraft:chest', 'minecraft:trapped_chest', 'minecraft:barrel', 'minecraft:dispenser', 'minecraft:dropper', 'minecraft:hopper','orange_shulker_box'];
         if (!containerBlocks.includes(block.typeId)) {
             // consoleOutput(`Block at ${pos.x}, ${pos.y}, ${pos.z} (${block.typeId}) likely doesn't have an inventory.`);
             return null;
@@ -226,9 +226,9 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
                             } else {
                                 // Optional: Send message only once per loop if target is full
                                 if (itemsAddedThisLoop === 0 && loop === 0) { // Only show on first failed attempt if the chest was full from the start of this item addition phase.
-                                    consoleOutput(
-                                        `Target container at (${targetPos.x}, ${targetPos.y}, ${targetPos.z}) has no empty slots left for this loop (${loop + 1}).`
-                                    );
+                                   // consoleOutput(
+                                   //     `Target container at (${targetPos.x}, ${targetPos.y}, ${targetPos.z}) has no empty slots left for this loop (${loop + 1}).`
+                                   // );
                                 }
                                 break; // Stop trying to add items for this loop
                             }
@@ -237,14 +237,14 @@ export function registerChestFillCommand(handler: Handler, moduleName: string) {
 
                     } // end loop
 
-                    sendMessage(
-                        event,
-                        `Added a total of ${itemsAddedTotal} item stacks to target container (${targetPos.x}, ${targetPos.y}, ${targetPos.z}) over ${loopCount} loop(s).`
-                    );
+                   // sendMessage(
+                   //     event,
+                   //     `Added a total of ${itemsAddedTotal} item stacks to target container (${targetPos.x}, ${targetPos.y}, ${targetPos.z}) over ${loopCount} loop(s).`
+                   // );
 
                 } catch (error: any) {
                     consoleOutput(`Error during item filling process: ${error.message}\n${error.stack}`);
-                    sendMessage(event, `An error occurred during the item filling process: ${error.message}`);
+                  //  sendMessage(event, `An error occurred during the item filling process: ${error.message}`);
                 }
             }); // end system.run
         },

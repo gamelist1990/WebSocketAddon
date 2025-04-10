@@ -1,4 +1,4 @@
-import { Player, system, world } from "@minecraft/server";
+import { Dimension, Player, system, world } from "@minecraft/server";
 import { Handler } from "../../../module/Handler";
 
 export function registerCheckBlockCommand(handler: Handler, moduleName: string) {
@@ -116,7 +116,7 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 sendMessage(`JSON解析エラー、または処理中にエラーが発生しました: ${error}`);
             }
 
-            function executeCommand(commandTemplate: string, x: number, y: number, z: number, dimension: any) {
+            function executeCommand(commandTemplate: string, x: number, y: number, z: number, dimension: Dimension) {
                 let command = commandTemplate;
 
                 command = command.replaceAll("{x}", x.toString());
@@ -124,7 +124,7 @@ export function registerCheckBlockCommand(handler: Handler, moduleName: string) 
                 command = command.replaceAll("{z}", z.toString());
 
                 try {
-                    dimension.runCommandAsync(command);
+                    system.run(() => dimension.runCommand(command))
                 } catch (error) {
                     consoleOutput(`コマンド実行中にエラー（非同期）: ${error} \n ${command}`);
                     sendMessage(`コマンド実行中にエラー（非同期）: ${error}`);

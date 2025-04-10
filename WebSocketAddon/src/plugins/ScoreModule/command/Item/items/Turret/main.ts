@@ -1,8 +1,7 @@
 import {
   Player,
   system,
-  // Vector, // Vectorクラスは使用しないためコメントアウトまたは削除
-  Vector3, // Vector3 インターフェースは座標データとして引き続き使用
+  Vector3,
   EntityQueryOptions,
   world,
   Dimension,
@@ -11,9 +10,9 @@ import {
   Entity,
   MolangVariableMap,
 } from "@minecraft/server";
-import { CustomItem, EventType } from "../../../../utils/CustomItem"; // Adjust path as necessary
-import { registerCustomItem } from "../../custom"; // Adjust path as necessary
-import { Vector } from "../../../../../../module/Vector"; // Vector クラスのパスを確認
+import { CustomItem, EventType } from "../../../../utils/CustomItem"; 
+import { registerCustomItem } from "../../custom"; 
+import { Vector } from "../../../../../../module/Vector"; 
 
 const TURRET_RADIUS = 10;
 const TURRET_DURATION = 10; // 秒

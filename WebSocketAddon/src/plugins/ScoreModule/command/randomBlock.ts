@@ -169,7 +169,7 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                 let processedCount = 0;
                 const currentBlockPos = new Vector3(); 
 
-                sendMessage(`処理を開始します... 範囲: ${minVec} - ${maxVec}, 対象ブロック数: ${totalVolume}`);
+              //  sendMessage(`処理を開始します... 範囲: ${minVec} - ${maxVec}, 対象ブロック数: ${totalVolume}`);
 
                 const processChunk = () => {
                     const startTime = Date.now();
@@ -220,16 +220,16 @@ export function registerRandomBlockCommand(handler: Handler, moduleName: string)
                     if (currentIndex < totalVolume) {
                         system.run(processChunk); 
                     } else {
-                        const endTime = Date.now();
-                        const totalDurationSec = (endTime - commandStartTime) / 1000; 
+                      //  const endTime = Date.now();
+                      //  const totalDurationSec = (endTime - commandStartTime) / 1000; 
 
-                        const finishMessage = `ランダムブロック配置完了。${processedCount} ブロックを処理しました。(総時間: ${totalDurationSec.toFixed(2)}秒)`;
-                        sendMessage(finishMessage, true); 
-                        if (debugMode) sendActionBarMessage(finishMessage); 
+                      //  const finishMessage = `ランダムブロック配置完了。${processedCount} ブロックを処理しました。(総時間: ${totalDurationSec.toFixed(2)}秒)`;
+                      //  sendMessage(finishMessage, true); 
+                       // if (debugMode) sendActionBarMessage(finishMessage); 
                     }
                 };
 
-                const commandStartTime = Date.now();
+               // const commandStartTime = Date.now();
                 system.run(processChunk); 
 
             } catch (error: any) {

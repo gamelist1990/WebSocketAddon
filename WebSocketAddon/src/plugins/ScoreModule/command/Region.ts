@@ -31,7 +31,7 @@ interface RegionData {
 export function registerRegionControlCommand(handler: Handler, moduleName: string) {
     // --- regionDataMap の型定義を修正 ---
     const regionDataMap: { [key: string]: RegionData } = {};
-    const autoDeleteIntervalTicks = 20 * 5; // 5秒 (例)
+    const autoDeleteIntervalTicks = 1; // 5秒 (例)
 
     // --- Vector3 を使うようにヘルパー関数を修正 ---
     // (showRegionParticles, isInsideRegion, getNearestPointInRegion は変更なし)
