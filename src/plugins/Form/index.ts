@@ -10,7 +10,7 @@ import {
 import { Player, system } from "@minecraft/server";
 import { Handler } from "../../module/Handler";
 import { Module, moduleManager } from "../../module/module";
-import { Database } from './../../module/DataBase';
+import { Database } from '../../module/DataBase';
 
 interface FormDefinition {
     type: "action" | "message" | "modal";

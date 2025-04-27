@@ -207,7 +207,7 @@ export function registerChangeTag2Command(handler: Handler, moduleName: string) 
                 if (typeof options.titleSubtitleText === 'function') {
                     return options.titleSubtitleText(remainingTime ?? 0)
                 }
-                return options.titleSubtitleText
+                return (options.titleSubtitleText ?? "").replace("{time}", remainingTime?.toString() ?? "0");
             }
 
 

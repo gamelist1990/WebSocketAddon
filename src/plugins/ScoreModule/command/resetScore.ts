@@ -88,7 +88,7 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
 
 
                 if (similarTags.length === 0) {
-                 //   sendMessage(`§c"${targetTag}" に類似するタグは見つかりませんでした。`);
+                    //   sendMessage(`§c"${targetTag}" に類似するタグは見つかりませんでした。`);
                     return;
                 }
 
@@ -99,6 +99,44 @@ export function registerResetScoreCommand(handler: Handler, moduleName: string) 
                     //sendMessage(`"${targetTag}" に類似する以下のタグを削除しました:\n${similarTags.join(', ')}`);
                 });
             }
+        },
+    });
+
+    handler.registerCommand('resetJson', {
+        moduleName: moduleName,
+        description: '実行したプレイヤーの全てのダイナミックプロパティをクリアします。',
+        usage: 'resetJson',
+        execute: (_message, event) => {
+            const sendMessage = (message: string) => {
+                if (event.sourceEntity instanceof Player) {
+                    const player = event.sourceEntity;
+                    system.run(() => player.sendMessage(message));
+                }
+            };
+
+            if (!(event.sourceEntity instanceof Player)) {
+                sendMessage('このコマンドはプレイヤーのみ実行できます。');
+                return;
+            }
+
+            const player = event.sourceEntity;
+
+            system.run(() => {
+                try {
+                    const propertyIds = player.getDynamicPropertyIds();
+                    if (propertyIds.length === 0) {
+                        sendMessage('クリアするダイナミックプロパティはありません。');
+                        return;
+                    }
+                    for (const id of propertyIds) {
+                        player.setDynamicProperty(id, undefined);
+                    }
+                    sendMessage(`全てのダイナミックプロパティ (${propertyIds.length}個) をクリアしました。`);
+                } catch (error) {
+                    sendMessage(`ダイナミックプロパティのクリア中にエラーが発生しました: ${error}`);
+                    console.error(`Error clearing dynamic properties for ${player.name}: ${error}`);
+                }
+            });
         },
     });
 }

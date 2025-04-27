@@ -18,9 +18,10 @@ import { registerCheckBlockCommand } from './command/checkBlock';
 import { registerTagCommand } from './command/tag';
 import { registerItemCommand } from './command/Item/custom';
 import { registerTransfer } from './command/transfer';
-import { registerAutoArmorCommand } from './command/arrmor';
+import { registerAutoArmorCommand, registerAutoInvCommand } from './command/arrmor';
 import { registerDuelCommand } from './command/duel';
 import { registerRankCommands } from './utils/rankModule';
+
 
 class ScoreModule implements Module {
   name = 'ScoreModule';
@@ -153,11 +154,35 @@ class ScoreModule implements Module {
     registerDuelCommand(handler,this.name)
     //New
     registerRankCommands(handler, this.name);
+    registerAutoInvCommand(handler,this.name)
   }
 
 }
 
 
+
+
+
+// スティック使用時のフォーム表示
+/**
+ * world.beforeEvents.itemUse.subscribe((event) => {
+  if (event.itemStack.typeId === "minecraft:stick") {
+    system.run(()=>{
+      const form = new ActionFormData()
+        .title("§m§dtest")
+        .body("スティックを使いました。")
+        .button("OK","textures/ui/buy_now_hover.png");
+      //@ts-ignore
+      form.show(event.source).then((response) => {
+        if (response.selection === 0) {
+          //@ts-ignore
+          event.source.sendMessage("ボタン1が押されました。");
+        }
+      });
+    })
+  }
+});
+ */
 export const ver = "0.2.0"
 const ScoreModules = new ScoreModule();
 moduleManager.registerModule(ScoreModules);

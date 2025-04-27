@@ -17,22 +17,24 @@ import {
 } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 
-interface DuelConfig {
+export interface DuelConfig {
     name: string;
     pos1: Vector3;
     pos2: Vector3;
     kit: string; // Legacy kit support (still used for teleport)
     endPos: Vector3;
+    startCommands?: string[]; // Optional: Commands to run on duel start
+    endCommands?: string[];   // Optional: Commands to run on duel end
 }
 
-interface DuelRequest {
+export interface DuelRequest {
     requester: string;
     target: string;
     map?: string;
     timestamp: number;
 }
 
-interface RegisteredKit {
+export interface RegisteredKit {
     name: string;
     armorPos: Vector3;  // Armor chest position
     hotbarPos: Vector3; // Hotbar chest position
@@ -584,6 +586,22 @@ export class DuelManager {
         objective.setScore(scoreId, ++score);
     }
 
+    private executeCommands(player: Player, commands?: string[]): void {
+        if (!commands) return;
+        system.run(() => {
+            for (const command of commands) {
+                try {
+                    // Replace placeholders like {playerName} if needed, though @s should work in most cases
+                    const formattedCommand = command.replace('{playerName}', player.name);
+                    console.log(formattedCommand)
+                    player.runCommand(formattedCommand);
+                } catch (error) {
+                    console.warn(`Failed to execute command "${command}" for player ${player.name}: ${error}`);
+                }
+            }
+        });
+    }
+
     public startDuel(player1Name: string, player2Name: string, mapName: string): void {
         const player1 = world.getAllPlayers().find((p) => p.name === player1Name);
         const player2 = world.getAllPlayers().find((p) => p.name === player2Name);
@@ -645,17 +663,23 @@ export class DuelManager {
             })
 
             if (countdown > 0) {
-                player1.onScreenDisplay.setActionBar(`§l${countdown}`);
-                player2.onScreenDisplay.setActionBar(`§l${countdown}`);
+                player1.onScreenDisplay.setTitle(`§l${countdown}`);
+                player2.onScreenDisplay.setTitle(`§l${countdown}`);
                 player1.playSound("random.orb");
                 player2.playSound("random.orb");
                 countdown--;
             } else {
-                player1.onScreenDisplay.setActionBar("§l§a開始!");
-                player2.onScreenDisplay.setActionBar("§l§a開始!");
+                player1.onScreenDisplay.setTitle("§l§a >> 開始 <<");
+                player2.onScreenDisplay.setTitle("§l§a >> 開始 <<");
                 player1.playSound("conduit.activate");
                 player2.playSound("conduit.activate");
                 system.clearRun(countdownInterval);
+
+                // Execute start commands
+                console.log("Duel Command")
+                console.log(`Command:${duelConfig.startCommands}`)
+                this.executeCommands(player1, duelConfig.startCommands);
+                this.executeCommands(player2, duelConfig.startCommands);
 
                 const onPlayerLeave = world.afterEvents.playerLeave.subscribe((event) => {
                     if (event.playerName === player1Name) {
@@ -726,13 +750,17 @@ export class DuelManager {
             }
         }, 10)
         run
+        winner.onScreenDisplay.setTitle(`§l§6§b${winner.name}§6 is Winner!!`)
         winner.sendMessage(`§6[デュエル]§r §aWiner§f:§b${winner.name} ${loser ? `§cLoser§f:§b${loser.name}` : `§cLoser§f:§b${loserName}`}`);
         winner.sendMessage(`§a最大連続キル数: §r${this.getPlayerScore(winner, SCOREBOARD_OBJECTIVES.MAX_KILLSTREAK)}`);
         if (loser) {
+            loser.onScreenDisplay.setTitle(`§l§6§b${winner.name}§6 is Winner!!`)
             loser.sendMessage(`§6[デュエル]§r §aWiner§f:§b${winner.name} §cLoser§f:§b${loser.name}`);
             loser.sendMessage(`§a最大連続キル数: §r${this.getPlayerScore(loser, SCOREBOARD_OBJECTIVES.MAX_KILLSTREAK)}`);
 
         }
+
+        
         system.runTimeout(() => {
             system.clearRun(run);
         }, 20 * 5)
@@ -753,7 +781,7 @@ export class DuelManager {
 
         const winnerAttackCount = this.getPlayerScore(winner, SCOREBOARD_OBJECTIVES.ATTACK_COUNT);
 
-        const duelConfig = this.duelConfigs[this.activeDuels.get(winner.name)?.map ?? "normal"];
+        const duelConfig = this.duelConfigs[this.activeDuels.get(winner.name)?.map ?? "normal"]; // loserがいる場合もwinnerのマップ情報を使う
 
         if (this.activeDuels.has(winner.name)) {
             this.activeDuels.delete(winner.name);
@@ -774,7 +802,11 @@ export class DuelManager {
             this.teleportPlayer(loser, duelConfig.endPos, loser.dimension);
         }
 
-
+        // Execute end commands
+        this.executeCommands(winner, duelConfig.endCommands);
+        if (loser) {
+            this.executeCommands(loser, duelConfig.endCommands);
+        }
 
         winner.sendMessage(`§6[デュエル結果]§r あなたの勝利！`);
         winner.sendMessage(`§a勝率の変化: §r${winnerWinRateChange.toFixed(0)}% (${winnerOldWinRate.toFixed(0)}% -> ${winnerNewWinRate.toFixed(0)}%)`);
@@ -879,7 +911,7 @@ export class DuelManager {
         }
 
         const form = new ActionFormData()
-            .title("デュエルメニュー")
+            .title("§m§s§rデュエルメニュー")
             .button("デュエルリクエストを送信")
             .button("デュエルリクエストを確認")
             .button("自分のデュエルステータス")
@@ -912,7 +944,7 @@ export class DuelManager {
             return;
         }
 
-        const playerListForm = new ActionFormData().title("プレイヤーを選択");
+        const playerListForm = new ActionFormData().title("§m§s§rプレイヤーを選択");
         players.forEach(p => playerListForm.button(p.name));
 
         //@ts-ignore
@@ -924,7 +956,7 @@ export class DuelManager {
 
         const mapSelectForm = new ActionFormData()
 
-            .title("マップを選択")
+            .title("§m§s§rマップを選択")
             .button("ランダムマップ")
             .button("マップを指定");
 
@@ -952,7 +984,7 @@ export class DuelManager {
                 player.sendMessage("§cデュエルマップが設定されていません。");
                 return;
             }
-            const selectMapForm = new ActionFormData().title("マップを選択");
+            const selectMapForm = new ActionFormData().title("§m§s§rマップを選択");
             const usableMaps = mapList.filter(map => !this.isMapInUse(map));
 
             usableMaps.forEach(map => selectMapForm.button(map));
@@ -979,7 +1011,7 @@ export class DuelManager {
             return;
         }
 
-        const form = new ActionFormData().title("デュエルリクエスト");
+        const form = new ActionFormData().title("§m§s§rデュエルリクエスト");
         requests.forEach(req => form.button(`${req.requester} - ${req.map ?? "ランダム"} マップ`));
 
         //@ts-ignore
@@ -1019,7 +1051,7 @@ export class DuelManager {
             return;
         }
 
-        const form = new ActionFormData().title("プレイヤーを選択");
+        const form = new ActionFormData().title("§m§s§rプレイヤーを選択");
         players.forEach(p => form.button(p.name));
 
         //@ts-ignore
@@ -1113,7 +1145,7 @@ export class DuelManager {
 
         if (existingRequest) {
             const messageForm = new MessageFormData()
-                .title("デュエルリクエスト")
+                .title("§m§s§rデュエルリクエスト")
                 .body(`${nearbyPlayers.name} へのデュエルリクエストをキャンセルしますか？`)
                 .button1("はい").button2("いいえ");
 
@@ -1127,7 +1159,7 @@ export class DuelManager {
             const incomingRequest = this.duelRequests.find(req => req.requester === nearbyPlayers.name && req.target === player.name);
             if (incomingRequest) {
                 const messageForm = new MessageFormData()
-                    .title("デュエルリクエスト")
+                    .title("§m§s§rデュエルリクエスト")
                     .body(`${nearbyPlayers.name} からのデュエルリクエストを承諾しますか？`)
                     .button1("承諾").button2("拒否");
 
@@ -1162,7 +1194,7 @@ export class DuelManager {
                 }
             } else {
                 const messageForm = new MessageFormData()
-                    .title("デュエルリクエスト")
+                    .title("§m§s§rデュエルリクエスト")
                     .body(`${nearbyPlayers.name} にデュエルを申し込みますか？`)
                     .button1("はい").button2("いいえ");
 
@@ -1170,7 +1202,7 @@ export class DuelManager {
                 const response = await messageForm.show(player);
                 if (response.selection === 0) {
                     const mapSelectForm = new ActionFormData()
-                        .title("マップを選択")
+                        .title("§m§s§rマップを選択")
                         .button("ランダムマップ")
                         .button("マップを指定");
 
@@ -1196,7 +1228,7 @@ export class DuelManager {
                             player.sendMessage("§cデュエルマップが設定されていません。");
                             return;
                         }
-                        const selectMapForm = new ActionFormData().title("マップを選択");
+                        const selectMapForm = new ActionFormData().title("§m§s§rマップを選択");
                         mapList.forEach(map => selectMapForm.button(map));
 
                         //@ts-ignore

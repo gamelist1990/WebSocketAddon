@@ -19,10 +19,8 @@ class ItemEventModule implements Module {
 §r- 'itemUse', 'itemUseOn'イベントを使用。\n
 §r- 使用アイテムIDのタグを付与:\n
   §r  - §9w:item_use_<item_id>§r: 単純使用\n
-  §r  - §9w:item_useOn_<item_id>§r: ブロックに使用&完了\n
 §r- キャンセル用タグ:\n
   §r  - §9w:item_use_cancel§r: 単純使用をキャンセル\n
-  §r  - §9w:item_useOn_cancel§r: ブロックへの使用をキャンセル\n
 §r- タグは自動削除(デフォルト1tick後)。\n
 §r- ブロック/エンティティとのインタラクト時にタグを付与:\n
   §r - §9w:touch_block_<block_id>§r: ブロックにインタラクト\n

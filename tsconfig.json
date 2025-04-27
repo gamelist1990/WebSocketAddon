@@ -1,6 +1,6 @@
 {
     "include": [
-        "WebSocketAddon/src/**/*.ts",
+        "src/**/*.ts",
         "gobal.d.ts"
     ],
     "exclude": [

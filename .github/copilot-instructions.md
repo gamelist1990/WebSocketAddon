@@ -1,0 +1,1 @@
+ - @azureルール - Azureのベストプラクティスを使用：Azureのコードを生成する場合、Azureの端末コマンドを実行する、またはAzureに関連する操作を実行する場合、利用可能な場合は `azure_development -get_best_practices`ツールを呼び出します。

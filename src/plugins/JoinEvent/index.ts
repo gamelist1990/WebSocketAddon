@@ -47,9 +47,9 @@ class PlayerJoinLeaveModule implements Module {
     private handlePlayerJoin = (event: PlayerJoinAfterEvent) => {
         const { playerName } = event;
         for (const player of world.getAllPlayers()) {
-            if (player.hasTag(`w:join_cancel`)) {
-                player.runCommand(`kick ${playerName} §l§f[§cError§f]§r\n\n§c§6サーバーにより参加が拒否されました。`);
-            }
+            //if (player.hasTag(`w:join_cancel`)) {
+            //    player.runCommand(`kick ${playerName} §l§f[§cError§f]§r\n\n§c§6サーバーにより参加が拒否されました。`);
+            //}
             if (player.name === playerName) {
                 player.addTag('w:join');
             }
