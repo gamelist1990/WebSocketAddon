@@ -1,26 +1,27 @@
 import { Module, moduleManager } from '../../module/module';
 import { Handler } from '../../module/Handler';
 import "./utils/import";
-import { registerChangeTag2Command, registerChangeTagCommand } from './command/changeTag';
-import { registerChestFillCommand } from './command/chestFill';
-import { registerCloneBlockCommand } from './command/cloneBlock';
-import { registerCloseFormCommand } from './command/closeForm';
-import { registerScoreCommand } from './command/copyScore';
-import { registerRandomDropCommand } from './command/dropItem';
-import { registerRandomBlockCommand } from './command/randomBlock';
-import { registerNumberCommand } from './command/randomNumber';
-import { registerResetScoreCommand } from './command/resetScore';
-import { registerScoreDeleteCommand } from './command/scoreDelete';
-import { registerTeamCommand } from './command/team';
-import { registerTeamCountCommand } from './command/teamCount';
-import { registerRegionControlCommand } from './command/Region';
-import { registerCheckBlockCommand } from './command/checkBlock';
-import { registerTagCommand } from './command/tag';
-import { registerItemCommand } from './command/Item/custom';
-import { registerTransfer } from './command/transfer';
-import { registerAutoArmorCommand, registerAutoInvCommand } from './command/arrmor';
-import { registerDuelCommand } from './command/duel';
+import { registerChangeTag2Command, registerChangeTagCommand } from './utils/command/changeTag';
+import { registerChestFillCommand } from './utils/command/chestFill';
+import { registerCloneBlockCommand } from './utils/command/cloneBlock';
+import { registerCloseFormCommand } from './utils/command/closeForm';
+import { registerScoreCommand } from './utils/command/copyScore';
+import { registerRandomDropCommand } from './utils/command/dropItem';
+import { registerRandomBlockCommand } from './utils/command/randomBlock';
+import { registerNumberCommand } from './utils/command/randomNumber';
+import { registerResetScoreCommand } from './utils/command/resetScore';
+import { registerScoreDeleteCommand } from './utils/command/scoreDelete';
+import { registerTeamCommand } from './utils/command/team';
+import { registerTeamCountCommand } from './utils/command/teamCount';
+import { registerRegionControlCommand } from './utils/command/Region';
+import { registerCheckBlockCommand } from './utils/command/checkBlock';
+import { registerTagCommand } from './utils/command/tag';
+import { registerItemCommand } from './utils/command/Item/custom';
+import { registerTransfer } from './utils/command/transfer';
+import { registerAutoArmorCommand, registerAutoInvCommand } from './utils/command/arrmor';
+import { registerDuelCommand } from './utils/command/duel';
 import { registerRankCommands } from './utils/rankModule';
+import { registerFillCommand } from './utils/command/fill';
 
 
 class ScoreModule implements Module {
@@ -150,11 +151,12 @@ class ScoreModule implements Module {
     registerTagCommand(handler, this.name);
     registerItemCommand(handler, this.name);
     registerTransfer(handler, this.name);
-    registerAutoArmorCommand(handler,this.name)
-    registerDuelCommand(handler,this.name)
+    registerAutoArmorCommand(handler, this.name)
+    registerDuelCommand(handler, this.name)
     //New
     registerRankCommands(handler, this.name);
-    registerAutoInvCommand(handler,this.name)
+    registerAutoInvCommand(handler, this.name)
+    registerFillCommand(handler, this.name)
   }
 
 }
