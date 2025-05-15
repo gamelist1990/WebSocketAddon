@@ -617,9 +617,9 @@ export async function showPlayerInfoUI(
 export async function showSearchPlayerUI(player: Player, rankSystem: any) {
     const form = new ModalFormData();
     form.title(`${rankSystem.title} プレイヤー検索`);
-    form.textField('名前 (部分一致)', 'プレイヤー名 or オフライン', '');
-    form.textField('最低スコア (任意)', '0', '');
-    form.textField('最高スコア (任意)', '', '');
+    form.textField('名前 (部分一致)', 'プレイヤー名 or オフライン');
+    form.textField('最低スコア (任意)', '0');
+    form.textField('最高スコア (任意)', '');
 
     try {//@ts-ignore
         const response = await form.show(player);

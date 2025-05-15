@@ -136,23 +136,31 @@ class FormCreationModule implements Module {
 
                     if (formDefinition.dropdowns) {
                         for (const dropdown of formDefinition.dropdowns) {
-                            form.dropdown(dropdown.label, dropdown.options, dropdown.defaultIndex);
+                            form.dropdown(dropdown.label, dropdown.options, { defaultValueIndex: dropdown.defaultIndex });
                         }
                     }
                     if (formDefinition.inputs) {
                         for (const input of formDefinition.inputs) {
-                            form.textField(input.label, input.placeholder || "", input.defaultValue);
+                            form.textField(input.label, input.placeholder || "", { defaultValue: input.defaultValue });
                         }
                     }
                     if (formDefinition.toggles) {
                         for (const toggle of formDefinition.toggles) {
-                            form.toggle(toggle.label, toggle.defaultValue);
+                            form.toggle(toggle.label, { defaultValue: toggle.defaultValue });
                         }
                     }
 
                     if (formDefinition.sliders) {
                         for (const slider of formDefinition.sliders) {
-                            form.slider(slider.label, slider.min, slider.max, slider.step || 1, slider.defaultValue);
+
+                            form.slider(
+                                slider.label,       // label
+                                slider.min,         // minimumValue
+                                slider.max,         // maximumValue
+                                {                   // sliderOptions
+                                    defaultValue: slider.defaultValue // defaultValue
+                                }
+                            );
                         }
                     }
                     break;

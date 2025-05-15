@@ -38,11 +38,11 @@ class ChatModule implements Module {
     "baka", "aho", "kuzu", "shine", "kiero", "gomi", "kasu", "noroma", "debu", "busu", "hage", "chibi",
     "teinou", "munou", "yakudatazu", "makeinu", "zako", "yowamushi", "hikyoumono", "usotsuki", "uragirimono",
     "idiot", "fool", "moron", "stupid", "dumb", "retard", "asshole", "bitch", "bastard", "loser",
-    "scum", "trash", "garbage", "worthless", "incompetent",
+    "scum", "trash", "garbage", "worthless",
 
     // 挑発系 (Provocations)
-    "雑魚乙", "弱すぎ", "下手くそ", "noob", "nub", "ボット", "bot", "煽り", "aori",
-    "lol", "lmao", "rofl", "get good", "git gud", "ez", "easy", "noob", "tryhard", "sweat", "salty",
+    "雑魚乙", "弱すぎ", "下手くそ", "noob", "nub", "ボット", "煽り", "aori",
+    "lmao", "rofl", "get good", "git gud", "ez", "easy", "noob", "tryhard", "sweat", "salty",
     "mad", "triggered", "cry", "crying", "rage", "raging", "ez",
 
     // セクシャルハラスメント系 (Sexual Harassment)

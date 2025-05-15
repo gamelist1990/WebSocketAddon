@@ -14,8 +14,8 @@ const AXE_COOLDOWN_MS = 900;
 const CUSTOM_AXE_ID = 25;
 
 const COOLDOWN_BAR_SLOTS = 10;
-const FILLED_CHAR = "█";
-const EMPTY_CHAR = "░";
+const FILLED_CHAR = "|";
+const EMPTY_CHAR = "|";
 const FILLED_COLOR = "§a";
 const EMPTY_COLOR = "§c";
 const COOLDOWN_UPDATE_INTERVAL_TICKS = 0; 
@@ -81,7 +81,7 @@ const customDiamondAxe = new CustomItem({
     lore: [
         "§7Java版風クールダウンを持つアックス。",
         "§7クールダウン: §e0.9秒",
-        "§a█§c░ バーでクールダウン表示。",
+        "§a|§c|バーでクールダウン表示。",
         "§a準備完了時に攻撃すると追加ダメージ！ (§e+" + BONUS_DAMAGE + "§a)",
         "§cクールダウン中の攻撃はクールダウンをリセットする。",
     ],
@@ -103,8 +103,8 @@ const customDiamondAxe = new CustomItem({
                 startCooldownVisual(player, now);
                 player.playSound("note.bass", { location: player.location, pitch: 0.7, volume: 0.6 });
                 try {
-                    const regenerationOptions: EntityEffectOptions = { amplifier: 4, showParticles: false };
-                    entityHit.addEffect("regeneration", 1, regenerationOptions);
+                    const regenerationOptions: EntityEffectOptions = { amplifier: 5, showParticles: false };
+                    entityHit.addEffect("instant_health", 1, regenerationOptions);
                 } catch (e) {
                     console.warn(`プレイヤー ${player.name} への弱体化付与中にエラー: ${e}`);
                 }

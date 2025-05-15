@@ -12,7 +12,7 @@ const wClickClicks = new Map<Player, ClickInfo[]>(); // w:click 用のクリッ�
 
 world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {
     if (!(damagingEntity instanceof Player)) return;
-    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueCps"));
+    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("op"));
     if (!isCPSTrackingEnabled) return;
     //w:clickタグを持っているか確認
     if (damagingEntity.hasTag("w:click")) return; // w:click による検知とは分離
@@ -25,7 +25,7 @@ world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {
 
 world.afterEvents.entityHitEntity.subscribe(({ damagingEntity }) => {
     if (!(damagingEntity instanceof Player)) return;
-    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueCps"));
+    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("op"));
     if (!isCPSTrackingEnabled) return;
     if (damagingEntity.hasTag("w:click")) return; // w:click による検知とは分離
 
@@ -57,7 +57,7 @@ const cpsRegex = /\n§a\[CPS: \d+\]/; // Include the newline in the regex
 
 
 system.runInterval(() => {
-    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueCps"));
+    const isCPSTrackingEnabled = world.getPlayers().some(p => p.hasTag("op"));
     const isHPTrackingEnabled = world.getPlayers().some(p => p.hasTag("trueHP"));
     const isTeamTrackingEnable = world.getPlayers().some(p => p.hasTag("trueTeam"));
     if (!isCPSTrackingEnabled && !isTeamTrackingEnable && !isHPTrackingEnabled) return;
@@ -86,7 +86,7 @@ system.runInterval(() => {
         // CPS
         if (player.hasTag("cps")) {
             const normalCPS = getPlayerCPS(player);
-            // const wClickCPS = getPlayerCPSWClick(player);
+            //const wClickCPS = getPlayerCPSWClick(player);
             const totalCPS = normalCPS;
 
 
@@ -151,6 +151,20 @@ export function getPlayerCPSWClick(player: Player): number {
     wClickClicks.set(player, recentClicks);  // 1秒以上前のクリック情報を削除
     return recentClicks.length;
 }
+
+// CPS 抑制
+
+system.runInterval(()=>{
+    for (const player of world.getPlayers()) {
+        if (player) {
+            const wClickCPS = getPlayerCPS(player);
+            if (wClickCPS >= 25) {
+                player.onScreenDisplay.setTitle(`§cWarn CPS: ${wClickCPS}+`);
+                player.addEffect("minecraft:weakness", 5,{ amplifier: 255 });
+            }
+        }
+    }
+})
 
 
 // tag コマンド

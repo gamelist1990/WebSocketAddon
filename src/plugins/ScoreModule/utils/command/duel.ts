@@ -222,7 +222,7 @@ export function registerDuelCommand(handler: Handler, moduleName: string) {
                             endCommands: configInput.endCommands
                         };
 
-                        console.log(`${JSON.stringify(duelConfig)}`)
+
 
                         // Add the config using the manager's method, using lowercase name as the key
                         const configKey = configInput.name.toLowerCase();
@@ -234,7 +234,6 @@ export function registerDuelCommand(handler: Handler, moduleName: string) {
                         if (player instanceof Player) {
                             player.sendMessage(successMsg + "\n" + detailMsg);
                         } else {
-                            console.log(`[Duel Create] Successfully registered duel config '${configInput.name}' (Key: ${configKey}). Kit: ${configInput.kit.toLowerCase()}`);
                         }
                     } catch (error: any) {
                         const errorMsg = `§cデュエル設定 '${configInput.name}' の追加中にエラーが発生しました: ${error.message || error}`;
@@ -303,7 +302,6 @@ export function registerDuelCommand(handler: Handler, moduleName: string) {
                         const pos2Str = pos2 ? `(${pos2.x}, ${pos2.y}, ${pos2.z})` : "なし";
                         const successMsg = `§aキット '${kitName}' のチェスト位置登録を試みました。\n§7 - Pos1: (${pos1.x}, ${pos1.y}, ${pos1.z}), Pos2: ${pos2Str}\n§7コンソールで詳細を確認してください（チェストの検証結果など）。`;
                         if (player instanceof Player) player.sendMessage(successMsg);
-                        else console.log(`[Duel Kit] Attempted registration for kit '${kitName}' (Key: ${kitNameLower}). Pos1: (${pos1.x},${pos1.y},${pos1.z}), Pos2: ${pos2Str}. Check console for validation details.`);
                     } catch (error: any) {
                         // Catch errors specifically from registerKitChest if it throws them
                         const errorMsg = `§cキットチェスト '${kitName}' の登録中に予期せぬエラー: ${error.message || error}`;
