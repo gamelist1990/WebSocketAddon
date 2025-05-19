@@ -304,3 +304,69 @@ export function registerChangeTag2Command(handler: Handler, moduleName: string) 
         }
     })
 }
+
+
+export function registerRenameCommand(handler: Handler, moduleName: string) {
+    handler.registerCommand('rename', {
+        moduleName: moduleName,
+        description: 'プレイヤーの表示名を一時的に変更します。rename <新しい名前> で変更、rename -reset で元に戻します。',
+        usage: 'rename <新しい名前>\nrename -reset\nrename -clear',
+        execute: (message, event) => {
+            if (!(event.sourceEntity instanceof Player)) {
+                return;
+            }
+            const player = event.sourceEntity;
+            
+            if (message.trim() === '-reset') {
+                player.nameTag = player.name;
+                return;
+            }
+
+            if (message.trim() === '-clear') {
+                player.nameTag = "";
+                return;
+            }
+            
+            const newName = message.trim();
+            if (!newName) {
+                player.sendMessage('§c新しい名前を指定してください。');
+                return;
+            }
+
+            player.nameTag = newName;
+        },
+    });
+}
+
+
+export function registerKnockbackCommand(handler: Handler, moduleName: string) {
+    handler.registerCommand('knockback', {
+        moduleName: moduleName,
+        description: 'ノックバックを与えるコマンドです。knockback <x> <z> <y> の形式で使用します。xとzは水平方向、yは垂直方向（整数の1は0.1として計算）です。',
+        usage: 'knockback <x> <z> <y>',
+        execute: (message, event) => {
+            if (!(event.sourceEntity instanceof Player)) {
+                return;
+            }
+            const player = event.sourceEntity;
+            const args = message.trim().split(/\s+/);
+            if (args.length !== 3) {
+                player.sendMessage('使用方法: knockback <x> <z> <y>');
+                return;
+            }
+            const x = Number(args[0]);
+            const z = Number(args[1]);
+            const y = Number(args[2]);
+            if (isNaN(x) || isNaN(z) || isNaN(y)) {
+                player.sendMessage('全ての引数に有効な数値を指定してください。');
+                return;
+            }
+            const knockbackVector = { x: x, y: y * 0.1, z: z };
+            try {
+                player.applyKnockback(knockbackVector, knockbackVector.y);
+            } catch (error) {
+                player.sendMessage(`ノックバック適用中にエラーが発生しました: ${error}`);
+            }
+        },
+    });
+}

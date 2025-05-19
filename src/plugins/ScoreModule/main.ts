@@ -1,7 +1,7 @@
 import { Module, moduleManager } from '../../module/module';
 import { Handler } from '../../module/Handler';
 import "./utils/import";
-import { registerChangeTag2Command, registerChangeTagCommand } from './utils/command/changeTag';
+import { registerChangeTag2Command, registerChangeTagCommand, registerKnockbackCommand, registerRenameCommand } from './utils/command/changeTag';
 import { registerChestFillCommand } from './utils/command/chestFill';
 import { registerCloneBlockCommand } from './utils/command/cloneBlock';
 import { registerCloseFormCommand } from './utils/command/closeForm';
@@ -155,8 +155,10 @@ class ScoreModule implements Module {
     registerDuelCommand(handler, this.name)
     //New
     registerRankCommands(handler, this.name);
-    registerAutoInvCommand(handler, this.name)
-    registerFillCommand(handler, this.name)
+    registerAutoInvCommand(handler, this.name);
+    registerFillCommand(handler, this.name);
+    registerRenameCommand(handler, this.name);
+    registerKnockbackCommand(handler, this.name);
   }
 
 }

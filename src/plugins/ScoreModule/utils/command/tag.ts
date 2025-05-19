@@ -7,7 +7,7 @@ interface ClickInfo {
 };
 
 const clicks = new Map<Player, ClickInfo[]>();
-const wClickClicks = new Map<Player, ClickInfo[]>(); // w:click 用のクリック情報を格納
+const wClickClicks = new Map<Player, ClickInfo[]>();
 
 
 world.afterEvents.entityHitBlock.subscribe(({ damagingEntity }) => {

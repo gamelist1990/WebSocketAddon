@@ -44,7 +44,6 @@ class LoreEditorModule implements Module {
 
         const item = container.getItem(targetSlot);
         if (!item) {
-            player.sendMessage("§cエラー: 指定されたスロットにアイテムがありません。");
             return;
         }
 
