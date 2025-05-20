@@ -313,3 +313,115 @@ export function registerAutoInvCommand(handler: Handler, moduleName: string) {
         },
     });
 }
+
+
+
+
+
+export function registerAutoHotBarCommand(handler: Handler, moduleName: string) {
+    handler.registerCommand("autoHotBar", {
+        moduleName: moduleName,
+        description:
+            "指定タグを持つプレイヤーのホットバー(0-8)にアイテムを追加。fromChest=true でチェスト(スロット18-26)からコピー。fromChest=false の場合は空欄は上書きしません。",
+        usage: "autoHotBar <tagName> [fromChest] [chestX] [chestY] [chestZ]",
+        execute: (message, event) => {
+            const consoleOutput = (msg: string) => console.warn(msg);
+
+            const sendMessage = (msg: string) => {
+                if (event.sourceEntity instanceof Player) {
+                    const player = event.sourceEntity;
+                    system.run(() => player.sendMessage(msg));
+                } else {
+                    consoleOutput(msg);
+                }
+            };
+
+            const args = message.split(/\s+/);
+            if (args.length < 1) {
+                sendMessage("引数が不足しています。使用法: autoHotBar <tagName> [fromChest] [chestX] [chestY] [chestZ]");
+                return;
+            }
+
+            const tagName = args[0];
+            const fromChest = args[1] === "true";
+            let chestX: number, chestY: number, chestZ: number;
+            let chestContainer: any = undefined;
+
+            if (fromChest) {
+                if (args.length < 5) {
+                    sendMessage("fromChest=true の場合、チェスト座標 (chestX chestY chestZ) も指定してください。");
+                    return;
+                }
+                try {
+                    chestX = parseInt(args[2]);
+                    chestY = parseInt(args[3]);
+                    chestZ = parseInt(args[4]);
+                    if (isNaN(chestX) || isNaN(chestY) || isNaN(chestZ)) {
+                        throw new Error("座標は整数である必要があります。");
+                    }
+                } catch (error: any) {
+                    sendMessage(`座標の解析エラー: ${error.message}`);
+                    return;
+                }
+                const dimension = event.sourceEntity?.dimension ?? world.getDimension("overworld");
+                const chestBlock = dimension.getBlock({ x: chestX, y: chestY, z: chestZ });
+                if (!chestBlock) {
+                    sendMessage("指定された座標にブロックが見つかりませんでした。");
+                    return;
+                }
+                const chestInventoryComponent = chestBlock.getComponent("inventory") as BlockInventoryComponent;
+                if (!chestInventoryComponent) {
+                    sendMessage("指定されたブロックはインベントリを持っていません (チェストではありません)。");
+                    return;
+                }
+                chestContainer = chestInventoryComponent.container;
+                if (!chestContainer) {
+                    sendMessage("チェストのコンテナを取得できませんでした。");
+                    return;
+                }
+            }
+
+            const players = world.getPlayers({ tags: [tagName] });
+            if (players.length === 0) {
+                sendMessage(`タグ '${tagName}' を持つプレイヤーが見つかりませんでした。`);
+                return;
+            }
+
+            for (const player of players) {
+                const playerInventoryComponent = player.getComponent("inventory") as EntityInventoryComponent;
+                if (!playerInventoryComponent) {
+                    consoleOutput(`Player ${player.name} does not have an inventory component.`);
+                    continue;
+                }
+                const playerInventory = playerInventoryComponent.container;
+                if (!playerInventory) {
+                    consoleOutput(`Player ${player.name} could not get inventory container.`);
+                    continue;
+                }
+
+                for (let i = 0; i < 9; i++) {
+                    if (fromChest && chestContainer) {
+                        // fromChest=true: チェストにアイテムがある場所だけ上書き、空欄は何もしない
+                        const chestHotbarItem = chestContainer.getItem(i + 18);
+                        if (chestHotbarItem) {
+                            try {
+                                playerInventory.setItem(i, chestHotbarItem.clone());
+                            } catch (error: any) {
+                                console.error(`ホットバーへのアイテムコピー中にエラーが発生しました (Player Slot ${i}): ${error.message}`);
+                            }
+                        }
+                        // チェストが空欄の場合は何もしない
+                    } else if (chestContainer) {
+                        // fromChest=false: チェストの内容で全て上書き（空欄も含めてコピー）
+                        const chestHotbarItem = chestContainer.getItem(i + 18);
+                        try {
+                            playerInventory.setItem(i, chestHotbarItem ? chestHotbarItem.clone() : undefined);
+                        } catch (error: any) {
+                            console.error(`ホットバーへのアイテムコピー中にエラーが発生しました (Player Slot ${i}): ${error.message}`);
+                        }
+                    }
+                }
+            }
+        },
+    });
+}

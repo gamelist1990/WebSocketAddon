@@ -18,10 +18,11 @@ import { registerCheckBlockCommand } from './utils/command/checkBlock';
 import { registerTagCommand } from './utils/command/tag';
 import { registerItemCommand } from './utils/command/Item/custom';
 import { registerTransfer } from './utils/command/transfer';
-import { registerAutoArmorCommand, registerAutoInvCommand } from './utils/command/arrmor';
+import { registerAutoArmorCommand, registerAutoHotBarCommand, registerAutoInvCommand } from './utils/command/arrmor';
 import { registerDuelCommand } from './utils/command/duel';
 import { registerRankCommands } from './utils/rankModule';
 import { registerFillCommand } from './utils/command/fill';
+import { registerChangeHPCommand } from './utils/command/hpchange';
 
 
 class ScoreModule implements Module {
@@ -159,6 +160,8 @@ class ScoreModule implements Module {
     registerFillCommand(handler, this.name);
     registerRenameCommand(handler, this.name);
     registerKnockbackCommand(handler, this.name);
+    registerAutoHotBarCommand(handler, this.name);
+    registerChangeHPCommand(handler, this.name);
   }
 
 }
