@@ -27,7 +27,7 @@ const boomItem = new CustomItem({
 
 boomItem.then((player: Player, eventData: any) => {
   if (eventData.eventType === EventType.ItemUse) {
-    system.run(()=> giveNightVision(player, 20 * 15));
+    system.run(()=> giveNightVision(player, 20 * 30));
     system.run(() => boomItem.removeItem(player, boomItem.get()));
   }
 });
