@@ -11,3 +11,5 @@ import './gateWay/main'
 import './axe/main'
 import './why/main'
 import './NightVision/main'
+import "./EnderPearl/main"
+import "./Block/main"

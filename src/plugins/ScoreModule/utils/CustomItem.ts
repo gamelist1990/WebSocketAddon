@@ -18,12 +18,14 @@ export enum EventType {
   ItemUse,
   EntityHit,
   BlockHit,
+  BlockPlace, // 追加: ブロック設置イベント
 }
 
 export interface CustomItemEventData {
   itemStack: ItemStack;
   hitResult?: { entity?: Entity; block?: Block };
   eventType: EventType;
+  placedBlock?: Block; // 追加: BlockPlace用
 }
 
 interface CustomItemOptions {
@@ -91,19 +93,17 @@ class CustomItemImpl implements CustomItem {
     world.beforeEvents.itemUse.subscribe((event: ItemUseBeforeEvent) => {
       this.handleItemUse(event);
     });
-
     world.beforeEvents.playerPlaceBlock.subscribe(
       (event: PlayerPlaceBlockBeforeEvent) => {
         this.handleBlockPlacement(event);
+        this.handleBlockPlace(event); // 追加: BlockPlaceイベント検知
       }
     );
-
     world.afterEvents.entityHitEntity.subscribe(
       (event: EntityHitEntityAfterEvent) => {
         this.handleEntityHit(event);
       }
     );
-
     world.afterEvents.entityHitBlock.subscribe(
       (event: EntityHitBlockAfterEvent) => {
         this.handleBlockHit(event);
@@ -223,7 +223,6 @@ class CustomItemImpl implements CustomItem {
           this.removeItem(player, usedItemStack);
         }
       }
-      
     }
   }
   private handleEntityHit(event: EntityHitEntityAfterEvent): void {
@@ -313,6 +312,32 @@ class CustomItemImpl implements CustomItem {
       }
     }
   }
+  private handleBlockPlace(event: PlayerPlaceBlockBeforeEvent): void {
+    const player = event.player;
+    const block = event.block;
+    const itemStack = player
+      .getComponent("inventory")
+      ?.container?.getItem(player.selectedSlotIndex);
+    if (!itemStack) return;
+    if (
+      itemStack.typeId === this.item &&
+      itemStack.nameTag === this.name &&
+      this.compareLore(itemStack.getLore(), this.lore)
+    ) {
+      if (this.callback) {
+        const eventData: CustomItemEventData = {
+          itemStack,
+          eventType: EventType.BlockPlace,
+          placedBlock: block,
+        };
+        this.callback(player, eventData);
+        if (this.remove) {
+          this.removeItem(player, itemStack);
+        }
+      }
+    }
+  }
+
   public removeItem(player: Player, usedItemStack: ItemStack): void {
     const inventory = player.getComponent(
       "inventory"
@@ -327,7 +352,7 @@ class CustomItemImpl implements CustomItem {
         currentItem.typeId === usedItemStack.typeId &&
         currentItem.nameTag === usedItemStack.nameTag
       ) {
-        system.run(()=>{
+        system.run(() => {
           if (inventory.container) {
             if (currentItem.amount <= 1) {
               inventory.container.setItem(i, undefined);
@@ -336,7 +361,7 @@ class CustomItemImpl implements CustomItem {
               inventory.container.setItem(i, currentItem);
             }
           }
-        })
+        });
         return;
       }
     }

@@ -32,6 +32,7 @@ import { registerDuelCommand } from "./utils/command/duel";
 import { registerRankCommands } from "./utils/rankModule";
 import { registerFillCommand } from "./utils/command/fill";
 import { registerChangeHPCommand } from "./utils/command/hpchange";
+import { registerShopCommands } from "./utils/command/shop";
 
 class ScoreModule implements Module {
   name = "ScoreModule";
@@ -68,6 +69,7 @@ class ScoreModule implements Module {
     registerKnockbackCommand(handler, this.name);
     registerAutoHotBarCommand(handler, this.name);
     registerChangeHPCommand(handler, this.name);
+    registerShopCommands(handler, this.name);
   }
 }
 

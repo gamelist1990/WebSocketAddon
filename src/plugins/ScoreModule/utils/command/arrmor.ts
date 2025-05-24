@@ -322,7 +322,7 @@ export function registerAutoHotBarCommand(handler: Handler, moduleName: string) 
     handler.registerCommand("autoHotBar", {
         moduleName: moduleName,
         description:
-            "指定タグを持つプレイヤーのホットバー(0-8)にアイテムを追加。fromChest=true でチェスト(スロット18-26)からコピー。fromChest=false の場合は空欄は上書きしません。",
+            "指定タグを持つプレイヤーのホットバー(0-8)にアイテムを追加。fromChest=true でチェスト(スロット18-26)からコピー。fromChest=false の場合は空欄は上書きしません。[lock=inv]や[lock=slot]でLoreからロック指定可能。",
         usage: "autoHotBar <tagName> [fromChest] [chestX] [chestY] [chestZ]",
         execute: (message, event) => {
             const consoleOutput = (msg: string) => console.warn(msg);
@@ -387,6 +387,8 @@ export function registerAutoHotBarCommand(handler: Handler, moduleName: string) 
                 return;
             }
 
+            const lockPattern = /\[lock=(inv|slot)\]/;
+
             for (const player of players) {
                 const playerInventoryComponent = player.getComponent("inventory") as EntityInventoryComponent;
                 if (!playerInventoryComponent) {
@@ -400,25 +402,53 @@ export function registerAutoHotBarCommand(handler: Handler, moduleName: string) 
                 }
 
                 for (let i = 0; i < 9; i++) {
+                    let itemToSet: any = undefined;
+
                     if (fromChest && chestContainer) {
                         // fromChest=true: チェストにアイテムがある場所だけ上書き、空欄は何もしない
                         const chestHotbarItem = chestContainer.getItem(i + 18);
                         if (chestHotbarItem) {
-                            try {
-                                playerInventory.setItem(i, chestHotbarItem.clone());
-                            } catch (error: any) {
-                                console.error(`ホットバーへのアイテムコピー中にエラーが発生しました (Player Slot ${i}): ${error.message}`);
-                            }
+                            itemToSet = chestHotbarItem.clone();
+                        } else {
+                            continue; // チェストが空欄の場合は何もしない
                         }
-                        // チェストが空欄の場合は何もしない
                     } else if (chestContainer) {
                         // fromChest=false: チェストの内容で全て上書き（空欄も含めてコピー）
                         const chestHotbarItem = chestContainer.getItem(i + 18);
-                        try {
-                            playerInventory.setItem(i, chestHotbarItem ? chestHotbarItem.clone() : undefined);
-                        } catch (error: any) {
-                            console.error(`ホットバーへのアイテムコピー中にエラーが発生しました (Player Slot ${i}): ${error.message}`);
+                        itemToSet = chestHotbarItem ? chestHotbarItem.clone() : undefined;
+                    }
+
+                    if (itemToSet) {
+                        // Loreからロック指定を抽出
+                        let itemLockMode = ItemLockMode.none;
+                        let lore = itemToSet.getLore?.() ?? [];
+                        let lockFoundInLore = false;
+                        const newLore: string[] = [];
+
+                        for (const line of lore) {
+                            const match = line.match(lockPattern);
+                            if (match) {
+                                itemLockMode = match[1] === "inv" ? ItemLockMode.inventory : ItemLockMode.slot;
+                                const cleanedLine = line.replace(lockPattern, "").trim();
+                                if (cleanedLine.length > 0) {
+                                    newLore.push(cleanedLine);
+                                }
+                                lockFoundInLore = true;
+                            } else {
+                                newLore.push(line);
+                            }
                         }
+
+                        if (lockFoundInLore) {
+                            itemToSet.setLore?.(newLore);
+                        }
+                        itemToSet.lockMode = itemLockMode;
+                    }
+
+                    try {
+                        playerInventory.setItem(i, itemToSet);
+                    } catch (error: any) {
+                        console.error(`ホットバーへのアイテムコピー中にエラーが発生しました (Player Slot ${i}): ${error.message}`);
                     }
                 }
             }
