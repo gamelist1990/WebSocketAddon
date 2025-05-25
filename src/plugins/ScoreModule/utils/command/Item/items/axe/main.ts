@@ -10,7 +10,7 @@ import { registerCustomItem } from "../../custom";
 
 const axeCooldowns = new Map<string, number>();
 const activeCooldownIntervals = new Map<string, number>();
-const AXE_COOLDOWN_MS = 900;
+const AXE_COOLDOWN_MS = 600;
 const CUSTOM_AXE_ID = 25;
 
 const COOLDOWN_BAR_SLOTS = 10;
@@ -20,7 +20,7 @@ const FILLED_COLOR = "§a";
 const EMPTY_COLOR = "§c";
 const COOLDOWN_UPDATE_INTERVAL_TICKS = 0; 
 
-const BONUS_DAMAGE = 15; 
+const BONUS_DAMAGE = 17; 
 
 function startCooldownVisual(player: Player, startTime: number): void {
     if (activeCooldownIntervals.has(player.id)) {
