@@ -13,3 +13,4 @@ import './why/main'
 import './NightVision/main'
 import "./EnderPearl/main"
 import "./Block/main"
+import "./fireball/main"
